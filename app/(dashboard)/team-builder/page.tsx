@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useAppStore, Student } from "@/lib/store" // Assuming Student type is exported
+import { useAppStore } from "@/lib/store"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,16 +15,19 @@ import {
   CheckCircleIcon 
 } from "@heroicons/react/24/outline"
 import { generateTeamRecommendations } from "@/lib/mock-data"
-import { toast } from "sonner" // Assuming you use sonner or similar for toasts
+import { toast } from "sonner"
 
 export default function TeamBuilderPage() {
   const { currentUser, students, teamRecommendations, setTeamRecommendations } = useAppStore()
   
   // Local state for Team Creation
-  const [myTeams, setMyTeams] = useState<any[]>([]) // Replace any with Team type
+  const [myTeams, setMyTeams] = useState<any[]>([]) 
   const [isCreating, setIsCreating] = useState(false)
   const [draftTeamName, setDraftTeamName] = useState("")
   const [draftMembers, setDraftMembers] = useState<any[]>([])
+
+  // State for the Team Details Popup
+  const [selectedTeam, setSelectedTeam] = useState<any>(null)
 
   useEffect(() => {
     if (currentUser && teamRecommendations.length === 0) {
@@ -38,7 +41,6 @@ export default function TeamBuilderPage() {
   const startCreation = () => {
     if (!currentUser) return
     setIsCreating(true)
-    // Automatically add current user to the draft
     setDraftMembers([currentUser]) 
     setDraftTeamName("")
   }
@@ -47,14 +49,12 @@ export default function TeamBuilderPage() {
     const isSelected = draftMembers.find(m => m.id === student.id)
 
     if (isSelected) {
-      // Remove (prevent removing self)
       if (student.id === currentUser?.id) {
         toast.error("You cannot remove yourself from the team.")
         return
       }
       setDraftMembers(prev => prev.filter(m => m.id !== student.id))
     } else {
-      // Add
       if (draftMembers.length >= 6) {
         toast.error("Maximum team size is 6 members.")
         return
@@ -73,6 +73,7 @@ export default function TeamBuilderPage() {
       return
     }
 
+    // Creating a unique ID allows multiple teams with the exact same members
     const newTeam = {
       id: crypto.randomUUID(),
       name: draftTeamName,
@@ -100,7 +101,7 @@ export default function TeamBuilderPage() {
   if (!currentUser) return null
 
   return (
-    <div className="space-y-8 pb-12">
+    <div className="space-y-8 pb-12 relative">
       {/* --- Header --- */}
       <div className="flex items-center justify-between">
         <div>
@@ -121,7 +122,7 @@ export default function TeamBuilderPage() {
         </div>
       </div>
 
-      {/* --- My Teams List (Display existing teams) --- */}
+      {/* --- My Teams List --- */}
       {myTeams.length > 0 && (
         <section>
           <h2 className="mb-4 text-xl font-semibold text-foreground flex items-center">
@@ -129,33 +130,35 @@ export default function TeamBuilderPage() {
             My Teams ({myTeams.length})
           </h2>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {myTeams.map((team) => (
-  <Card key={team.id} className="glass rounded-2xl p-5 border-l-4 border-l-primary shadow-sm">
-    {/* Header: Team Name & Date */}
-    <div className="flex justify-between items-start mb-4 border-b pb-3">
-      <div>
-        <h3 className="font-bold text-lg">{team.name}</h3>
-        <p className="text-xs text-muted-foreground">
-          Created {team.createdAt.toLocaleDateString()}
-        </p>
-      </div>
-      <span className="bg-primary/10 text-primary text-xs font-medium px-2 py-1 rounded-full">
-        {team.members.length} Members
-      </span>
-    </div>
+            {myTeams.map((team) => (
+              <Card 
+                key={team.id} 
+                // Added onClick to open modal and hover effects
+                onClick={() => setSelectedTeam(team)}
+                className="glass rounded-2xl p-5 border-l-4 border-l-primary shadow-sm hover:shadow-md cursor-pointer transition-all hover:scale-[1.02]"
+              >
+                <div className="flex justify-between items-start mb-4 border-b pb-3">
+                  <div>
+                    <h3 className="font-bold text-lg">{team.name}</h3>
+                    <p className="text-xs text-muted-foreground">
+                      Created {team.createdAt.toLocaleDateString()}
+                    </p>
+                  </div>
+                  <span className="bg-primary/10 text-primary text-xs font-medium px-2 py-1 rounded-full">
+                    {team.members.length} Members
+                  </span>
+                </div>
 
-    {/* The New List of Names */}
-    <div className="flex flex-col gap-2">
-      {team.members.map((member: any) => (
-        <div key={member.id} className="flex items-center gap-2 text-sm text-foreground/80">
-          {/* Small decorative dot */}
-          <div className="h-1.5 w-1.5 rounded-full bg-primary" />
-          {member.name}
-        </div>
-      ))}
-    </div>
-  </Card>
-))}
+                <div className="flex flex-col gap-2">
+                  {team.members.map((member: any) => (
+                    <div key={member.id} className="flex items-center gap-2 text-sm text-foreground/80">
+                      <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+                      {member.name}
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            ))}
           </div>
         </section>
       )}
@@ -287,6 +290,57 @@ export default function TeamBuilderPage() {
           })}
         </div>
       </div>
+
+      {/* --- Team Details Modal / Popup --- */}
+      {selectedTeam && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <Card className="w-full max-w-md bg-background shadow-2xl rounded-2xl overflow-hidden relative animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="bg-primary/5 p-6 border-b flex justify-between items-start">
+              <div>
+                <h3 className="text-xl font-bold text-foreground">{selectedTeam.name}</h3>
+                <p className="text-sm text-muted-foreground">
+                  Created on {selectedTeam.createdAt.toLocaleDateString()}
+                </p>
+              </div>
+              <button 
+                onClick={() => setSelectedTeam(null)}
+                className="p-1 rounded-full hover:bg-slate-200 transition-colors"
+              >
+                <XMarkIcon className="w-6 h-6 text-muted-foreground" />
+              </button>
+            </div>
+
+            {/* Modal Content - Full Member List */}
+            <div className="p-6">
+              <h4 className="text-sm font-semibold mb-3 uppercase tracking-wider text-muted-foreground">
+                Team Members ({selectedTeam.members.length})
+              </h4>
+              <div className="space-y-3">
+                {selectedTeam.members.map((member: any) => (
+                  <div key={member.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 transition-colors">
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+                      {member.name.charAt(0)}
+                    </div>
+                    <div>
+                      <p className="font-medium text-foreground">{member.name}</p>
+                      {/* You can add department or role here if available in member object */}
+                      <p className="text-xs text-muted-foreground">Member</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              <div className="mt-6 pt-4 border-t flex justify-end">
+                <Button variant="outline" onClick={() => setSelectedTeam(null)}>
+                  Close
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
     </div>
   )
 }

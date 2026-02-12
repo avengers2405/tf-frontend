@@ -3,9 +3,25 @@
 import { useAppStore } from "@/lib/store"
 import { Card } from "@/components/ui/card"
 import { StatCard } from "@/components/ui/stat-card"
-import { DomainChart } from "@/components/ui/domain-chart"
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts"
-import { BriefcaseIcon, UserGroupIcon, ChartBarIcon, AcademicCapIcon } from "@heroicons/react/24/outline"
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+} from "recharts"
+import {
+  BriefcaseIcon,
+  UserGroupIcon,
+  ChartBarIcon,
+  AcademicCapIcon,
+} from "@heroicons/react/24/outline"
+import Link from "next/link"
 
 export default function AnalyticsPage() {
   const { students, opportunities, applications } = useAppStore()
@@ -15,7 +31,10 @@ export default function AnalyticsPage() {
   students.forEach((s) => {
     deptCounts[s.department] = (deptCounts[s.department] || 0) + 1
   })
-  const deptData = Object.entries(deptCounts).map(([name, value]) => ({ name, value }))
+  const deptData = Object.entries(deptCounts).map(([name, value]) => ({
+    name,
+    value,
+  }))
 
   // Year distribution
   const yearCounts: Record<number, number> = {}
@@ -32,16 +51,13 @@ export default function AnalyticsPage() {
   applications.forEach((a) => {
     stageCounts[a.stage] = (stageCounts[a.stage] || 0) + 1
   })
-  const stageData = Object.entries(stageCounts).map(([name, value]) => ({ name, value }))
+  const stageData = Object.entries(stageCounts).map(([name, value]) => ({
+    name,
+    value,
+  }))
 
-  // Average domain scores
-  const avgDomains = {
-    web: Math.round(students.reduce((sum, s) => sum + s.domains.web, 0) / students.length),
-    ml: Math.round(students.reduce((sum, s) => sum + s.domains.ml, 0) / students.length),
-    cp: Math.round(students.reduce((sum, s) => sum + s.domains.cp, 0) / students.length),
-    appDev: Math.round(students.reduce((sum, s) => sum + s.domains.appDev, 0) / students.length),
-    cyber: Math.round(students.reduce((sum, s) => sum + s.domains.cyber, 0) / students.length),
-  }
+
+
 
   const COLORS = [
     "hsl(var(--chart-1))",
@@ -51,17 +67,30 @@ export default function AnalyticsPage() {
     "hsl(var(--chart-5))",
   ]
 
-  const avgCGPA = (students.reduce((sum, s) => sum + s.cgpa, 0) / students.length).toFixed(2)
+  const avgCGPA = (
+    students.reduce((sum, s) => sum + s.cgpa, 0) / students.length
+  ).toFixed(2)
+
   const placementRate =
     applications.length > 0
-      ? ((applications.filter((a) => a.stage === "selected").length / applications.length) * 100).toFixed(1)
+      ? (
+          (applications.filter((a) => a.stage === "selected").length /
+            applications.length) *
+          100
+        ).toFixed(1)
       : "0"
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Analytics Dashboard</h1>
-        <p className="mt-1 text-muted-foreground">Comprehensive insights and statistics</p>
+        <h1 className="text-3xl font-bold text-foreground">
+          Analytics Dashboard
+        </h1>
+
+
+        <p className="mt-1 text-muted-foreground">
+          Comprehensive insights and statistics
+        </p>
       </div>
 
       {/* Key Metrics */}
@@ -92,12 +121,25 @@ export default function AnalyticsPage() {
           trend={{ value: 5, isPositive: true }}
         />
       </div>
+      <Link href="/analytics/unplaced">
+
+  <Card className="glass rounded-2xl p-6 hover:shadow-lg transition cursor-pointer">
+    <h2 className="text-xl font-semibold text-foreground mb-2">
+      Unplaced Students Analysis
+    </h2>
+    <p className="text-sm text-muted-foreground">
+      Identify students who have attended multiple interviews but are still not placed
+    </p>
+  </Card>
+</Link>
 
       {/* Charts Grid */}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Department Distribution */}
         <Card className="glass rounded-2xl p-6">
-          <h2 className="mb-4 text-xl font-semibold text-foreground">Department Distribution</h2>
+          <h2 className="mb-4 text-xl font-semibold text-foreground">
+            Department Distribution
+          </h2>
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -106,13 +148,18 @@ export default function AnalyticsPage() {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  label={({ name, percent }: any) =>
+                    `${name} ${(percent * 100).toFixed(0)}%`
+                  }
+                  
                   outerRadius={80}
-                  fill="#8884d8"
                   dataKey="value"
                 >
-                  {deptData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  {deptData.map((_, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={COLORS[index % COLORS.length]}
+                    />
                   ))}
                 </Pie>
                 <Tooltip />
@@ -123,37 +170,43 @@ export default function AnalyticsPage() {
 
         {/* Year Distribution */}
         <Card className="glass rounded-2xl p-6">
-          <h2 className="mb-4 text-xl font-semibold text-foreground">Year-wise Distribution</h2>
+          <h2 className="mb-4 text-xl font-semibold text-foreground">
+            Year-wise Distribution
+          </h2>
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={yearData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-                <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--popover))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "0.5rem",
-                  }}
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="hsl(var(--border))"
+                  opacity={0.3}
                 />
-                <Bar dataKey="value" fill="hsl(var(--chart-1))" radius={[8, 8, 0, 0]} />
+                <XAxis
+                  dataKey="name"
+                  stroke="hsl(var(--muted-foreground))"
+                  fontSize={12}
+                />
+                <YAxis
+                  stroke="hsl(var(--muted-foreground))"
+                  fontSize={12}
+                />
+                <Tooltip />
+                <Bar
+                  dataKey="value"
+                  fill="hsl(var(--chart-1))"
+                  radius={[8, 8, 0, 0]}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </Card>
 
-        {/* Average Domain Strength */}
+    
+        {/* Application Pipeline */}
         <Card className="glass rounded-2xl p-6">
-          <h2 className="mb-4 text-xl font-semibold text-foreground">Average Domain Strength</h2>
-          <div className="h-72">
-            <DomainChart domains={avgDomains} />
-          </div>
-        </Card>
-
-        {/* Application Stages */}
-        <Card className="glass rounded-2xl p-6">
-          <h2 className="mb-4 text-xl font-semibold text-foreground">Application Pipeline</h2>
+          <h2 className="mb-4 text-xl font-semibold text-foreground">
+            Application Pipeline
+          </h2>
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -162,13 +215,18 @@ export default function AnalyticsPage() {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  label={({ name, percent }: any) =>
+                    `${name} ${(percent * 100).toFixed(0)}%`
+                  }
+                  
                   outerRadius={80}
-                  fill="#8884d8"
                   dataKey="value"
                 >
-                  {stageData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  {stageData.map((_, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={COLORS[index % COLORS.length]}
+                    />
                   ))}
                 </Pie>
                 <Tooltip />
@@ -180,3 +238,5 @@ export default function AnalyticsPage() {
     </div>
   )
 }
+
+

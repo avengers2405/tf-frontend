@@ -1,10 +1,3 @@
-import * as pdfjsLib from "pdfjs-dist"
-import mammoth from "mammoth"
-
-// IMPORTANT: Set the worker source for PDF.js to a CDN for client-side usage 
-// to avoid complex Webpack configuration in Next.js
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
-
 // A basic list of skills to look for (expand this list as needed)
 const SKILL_DATABASE = [
   "React", "Next.js", "Node.js", "TypeScript", "JavaScript", "Python", 
@@ -14,6 +7,17 @@ const SKILL_DATABASE = [
   "Problem Solving", "Teamwork", "Agile", "Scrum", "HTML", "CSS", 
   "Tailwind", "Redux", "GraphQL", "REST API"
 ]
+
+// Lazy load PDF.js only in browser environment
+let pdfjsLib: typeof import("pdfjs-dist") | null = null
+const initPdfJs = async () => {
+  if (typeof window !== "undefined" && !pdfjsLib) {
+    pdfjsLib = await import("pdfjs-dist")
+    // Set the worker source for PDF.js to a CDN for client-side usage
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
+  }
+  return pdfjsLib
+}
 
 export const extractTextFromFile = async (file: File): Promise<string> => {
   const fileType = file.type
@@ -32,8 +36,13 @@ export const extractTextFromFile = async (file: File): Promise<string> => {
 }
 
 const parsePDF = async (file: File): Promise<string> => {
+  const pdfjs = await initPdfJs()
+  if (!pdfjs) {
+    throw new Error("PDF.js not available")
+  }
+  
   const arrayBuffer = await file.arrayBuffer()
-  const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer })
+  const loadingTask = pdfjs.getDocument({ data: arrayBuffer })
   const pdf = await loadingTask.promise
   let fullText = ""
 
@@ -48,6 +57,7 @@ const parsePDF = async (file: File): Promise<string> => {
 }
 
 const parseDocx = async (file: File): Promise<string> => {
+  const mammoth = await import("mammoth")
   const arrayBuffer = await file.arrayBuffer()
   const result = await mammoth.extractRawText({ arrayBuffer })
   return result.value

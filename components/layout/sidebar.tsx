@@ -15,6 +15,7 @@ import {
   ArrowUpTrayIcon,
   UsersIcon,
   AcademicCapIcon,
+  ArrowTrendingUpIcon,
 } from "@heroicons/react/24/outline"
 
 export function Sidebar() {
@@ -38,6 +39,7 @@ export function Sidebar() {
       { name: "Team Builder", href: "/team-builder", icon: UserGroupIcon },
       { name: "Recommendations", href: "/recommendations", icon: AcademicCapIcon },
       { name: "Notifications", href: "/notifications", icon: BellIcon },
+      { name: "Project Progress", href: "/project-progress/student", icon: ArrowTrendingUpIcon },
     ],
     tnp: [
       { name: "Dashboard", href: "/dashboard/tnp", icon: HomeIcon },
@@ -52,6 +54,7 @@ export function Sidebar() {
       { name: "Opportunities", href: "/opportunities", icon: BriefcaseIcon },
       { name: "Post Opportunity", href: "/post-opportunity", icon: PlusIcon },
       { name: "Students", href: "/resumes", icon: UsersIcon },
+      { name: "Project Progress", href: "/project-progress/teacher", icon: ArrowTrendingUpIcon },
     ],
     recruiter: [
       { name: "Dashboard", href: "/dashboard/recruiter", icon: HomeIcon },

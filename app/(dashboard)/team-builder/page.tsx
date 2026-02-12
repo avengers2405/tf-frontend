@@ -129,11 +129,33 @@ export default function TeamBuilderPage() {
             My Teams ({myTeams.length})
           </h2>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {myTeams.map((team) => (
-              <Card key={team.id} className="glass rounded-2xl p-5 border-l-4 border-l-primary">
-                 
-              </Card>
-            ))}
+          {myTeams.map((team) => (
+  <Card key={team.id} className="glass rounded-2xl p-5 border-l-4 border-l-primary shadow-sm">
+    {/* Header: Team Name & Date */}
+    <div className="flex justify-between items-start mb-4 border-b pb-3">
+      <div>
+        <h3 className="font-bold text-lg">{team.name}</h3>
+        <p className="text-xs text-muted-foreground">
+          Created {team.createdAt.toLocaleDateString()}
+        </p>
+      </div>
+      <span className="bg-primary/10 text-primary text-xs font-medium px-2 py-1 rounded-full">
+        {team.members.length} Members
+      </span>
+    </div>
+
+    {/* The New List of Names */}
+    <div className="flex flex-col gap-2">
+      {team.members.map((member: any) => (
+        <div key={member.id} className="flex items-center gap-2 text-sm text-foreground/80">
+          {/* Small decorative dot */}
+          <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+          {member.name}
+        </div>
+      ))}
+    </div>
+  </Card>
+))}
           </div>
         </section>
       )}

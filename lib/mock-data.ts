@@ -337,6 +337,7 @@ export const mockStudents: Student[] = [
     experience: [],
     leadership: ["Robotics Club President"],
   },
+  
 ];
 
 export const mockOpportunities: Opportunity[] = [
@@ -441,6 +442,112 @@ export const mockOpportunities: Opportunity[] = [
     deadline: "2025-02-15",
     applicants: 12,
   },
+  {
+  id: "OP006",
+  title: "Backend Developer Intern",
+  company: "CloudNova Technologies",
+  type: "internship",
+  description:
+    "Design and build scalable backend services, APIs, and database systems for cloud-native applications.",
+  skills: ["Node.js", "Express", "PostgreSQL", "REST API", "Docker"],
+  tags: ["Backend", "Cloud", "API"],
+  stipend: "₹28,000/month",
+  duration: "5 months",
+  eligibility: {
+    minCGPA: 7.5,
+    departments: ["Computer Science", "Information Technology"],
+    years: [3, 4],
+  },
+  postedBy: "CloudNova HR",
+  postedDate: "2025-02-02",
+  deadline: "2025-03-18",
+  applicants: 21,
+},
+{
+  id: "OP007",
+  title: "Data Engineer Intern",
+  company: "DataFlow Analytics",
+  type: "internship",
+  description:
+    "Build and maintain ETL pipelines, data warehouses, and analytics workflows for large-scale datasets.",
+  skills: ["Python", "SQL", "Apache Spark", "ETL", "Data Warehousing"],
+  tags: ["Data", "Big Data", "Analytics"],
+  stipend: "₹35,000/month",
+  duration: "6 months",
+  eligibility: {
+    minCGPA: 8.0,
+    departments: ["Computer Science", "Data Science"],
+    years: [3, 4],
+  },
+  postedBy: "DataFlow Hiring Team",
+  postedDate: "2025-02-05",
+  deadline: "2025-03-25",
+  applicants: 17,
+},
+{
+  id: "OP008",
+  title: "DevOps Engineer Intern",
+  company: "InfraScale Systems",
+  type: "internship",
+  description:
+    "Work on CI/CD pipelines, cloud infrastructure automation, and monitoring systems in a production environment.",
+  skills: ["Docker", "Kubernetes", "AWS", "CI/CD", "Linux"],
+  tags: ["DevOps", "Cloud", "Infrastructure"],
+  stipend: "₹32,000/month",
+  duration: "4 months",
+  eligibility: {
+    minCGPA: 7.0,
+    departments: ["Computer Science", "Information Technology"],
+    years: [3, 4],
+  },
+  postedBy: "InfraScale DevOps Team",
+  postedDate: "2025-02-07",
+  deadline: "2025-03-22",
+  applicants: 26,
+},
+{
+  id: "OP009",
+  title: "UI/UX & Frontend Developer Intern",
+  company: "DesignCraft Studios",
+  type: "internship",
+  description:
+    "Create visually appealing and user-centric interfaces while collaborating with designers and frontend engineers.",
+  skills: ["HTML", "CSS", "JavaScript", "React", "Figma"],
+  tags: ["Frontend", "UI/UX", "Design"],
+  stipend: "₹22,000/month",
+  duration: "3 months",
+  eligibility: {
+    minCGPA: 7.0,
+    departments: ["Computer Science", "Design & Technology"],
+    years: [2, 3],
+  },
+  postedBy: "DesignCraft Talent Team",
+  postedDate: "2025-02-01",
+  deadline: "2025-03-12",
+  applicants: 34,
+},
+{
+  id: "OP010",
+  title: "AI & NLP Engineer Intern",
+  company: "NeuroText Labs",
+  type: "internship",
+  description:
+    "Develop NLP models and AI pipelines for text analysis, chatbots, and intelligent document processing.",
+  skills: ["Python", "Natural Language Processing", "Machine Learning", "Transformers", "PyTorch"],
+  tags: ["AI", "NLP", "Research"],
+  stipend: "₹42,000/month",
+  duration: "6 months",
+  eligibility: {
+    minCGPA: 8.5,
+    departments: ["Computer Science", "Artificial Intelligence", "Data Science"],
+    years: [3, 4],
+  },
+  postedBy: "NeuroText Research Team",
+  postedDate: "2025-02-10",
+  deadline: "2025-03-30",
+  applicants: 19,
+},
+  
 ]
 
 export const mockApplications: Application[] = [

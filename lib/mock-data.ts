@@ -1,6 +1,7 @@
 import type { Student, Opportunity, Application, Notification } from "./types"
 
 export const mockStudents: Student[] = [
+  // --- Original Students (S001 - S004) ---
   {
     id: "S001",
     name: "Alex Kumar",
@@ -71,7 +72,7 @@ export const mockStudents: Student[] = [
     leadership: [],
   },
   {
-    id: "S004",
+    id: "S004",  
     name: "Sneha Patel",
     email: "sneha.patel@university.edu",
     department: "Computer Science",
@@ -90,7 +91,253 @@ export const mockStudents: Student[] = [
     experience: [],
     leadership: ["Cybersecurity Club - Vice President"],
   },
-]
+
+  // --- New Students (S005 - S014) ---
+
+  // 5. Backend & Cloud Specialist
+  {
+    id: "S005",
+    name: "Vikram Singh",
+    email: "vikram.singh@university.edu",
+    department: "Computer Science",
+    year: 4,
+    cgpa: 8.9,
+    skills: ["Go", "Microservices", "Docker", "Kubernetes", "AWS", "PostgreSQL"],
+    domains: { web: 80, ml: 40, cp: 75, appDev: 60, cyber: 65 },
+    projects: [
+      {
+        id: "P005",
+        title: "Scalable Chat Service",
+        description: "High-concurrency chat backend handling 10k connections",
+        skills: ["Go", "WebSocket", "Redis"],
+      },
+    ],
+    experience: [
+      {
+        id: "E002",
+        title: "Backend Intern",
+        company: "CloudScale Solutions",
+        duration: "6 months",
+        description: "Optimized API latency by 40%",
+      },
+    ],
+    leadership: ["Cloud Computing Lead"],
+  },
+
+  // 6. AI Agents & LLM Engineer
+  {
+    id: "S006",
+    name: "Ananya Gupta",
+    email: "ananya.gupta@university.edu",
+    department: "Artificial Intelligence",
+    year: 3,
+    cgpa: 9.5,
+    skills: ["LangChain", "OpenAI API", "Python", "Vector Databases", "FastAPI"],
+    domains: { web: 70, ml: 98, cp: 60, appDev: 50, cyber: 40 },
+    projects: [
+      {
+        id: "P006",
+        title: "Legal Document Assistant",
+        description: "RAG-based AI agent to summarize legal PDFs",
+        skills: ["LangChain", "Pinecone", "Next.js"],
+      },
+    ],
+    experience: [],
+    leadership: ["Hackathon Winner - GenAI Hack"],
+  },
+
+  // 7. Blockchain & Web3 Developer
+  {
+    id: "S007",
+    name: "Arjun Mehta",
+    email: "arjun.mehta@university.edu",
+    department: "Computer Science",
+    year: 3,
+    cgpa: 8.3,
+    skills: ["Solidity", "Ethereum", "Web3.js", "React", "Rust"],
+    domains: { web: 85, ml: 30, cp: 65, appDev: 40, cyber: 75 },
+    projects: [
+      {
+        id: "P007",
+        title: "Decentralized Voting System",
+        description: "Secure voting platform on Ethereum testnet",
+        skills: ["Solidity", "Hardhat", "React"],
+      },
+    ],
+    experience: [],
+    leadership: ["Blockchain Society Member"],
+  },
+
+  // 8. Competitive Programmer (Algorithm Specialist)
+  {
+    id: "S008",
+    name: "David John",
+    email: "david.john@university.edu",
+    department: "Mathematics & Computing",
+    year: 2,
+    cgpa: 9.8,
+    skills: ["C++", "Algorithms", "Data Structures", "Python", "Math"],
+    domains: { web: 30, ml: 50, cp: 99, appDev: 20, cyber: 30 },
+    projects: [
+      {
+        id: "P008",
+        title: "AlgoVisualizer",
+        description: "Tool to visualize graph algorithms like Dijkstra",
+        skills: ["C++", "Qt Framework"],
+      },
+    ],
+    experience: [],
+    leadership: ["ICPC Regionalist"],
+  },
+
+  // 9. DevOps & SRE
+  {
+    id: "S009",
+    name: "Rohan Das",
+    email: "rohan.das@university.edu",
+    department: "Information Technology",
+    year: 4,
+    cgpa: 7.9,
+    skills: ["Linux", "Bash", "Terraform", "Jenkins", "Ansible", "Azure"],
+    domains: { web: 60, ml: 20, cp: 50, appDev: 30, cyber: 80 },
+    projects: [
+      {
+        id: "P009",
+        title: "Auto-Scaling Infrastructure",
+        description: "Infrastructure as Code for a 3-tier architecture",
+        skills: ["Terraform", "AWS", "Nginx"],
+      },
+    ],
+    experience: [
+      {
+        id: "E003",
+        title: "DevOps Trainee",
+        company: "StartUp Hub",
+        duration: "3 months",
+        description: "Automated CI/CD pipelines",
+      },
+    ],
+    leadership: [],
+  },
+
+  // 10. Game Developer
+  {
+    id: "S010",
+    name: "Karthik N",
+    email: "karthik.n@university.edu",
+    department: "Computer Science",
+    year: 3,
+    cgpa: 8.1,
+    skills: ["Unity", "C#", "Blender", "Game Physics", "HLSL"],
+    domains: { web: 40, ml: 30, cp: 70, appDev: 95, cyber: 20 },
+    projects: [
+      {
+        id: "P010",
+        title: "Space Survivor",
+        description: "3D Endless runner game for mobile",
+        skills: ["Unity", "C#"],
+      },
+    ],
+    experience: [],
+    leadership: ["Game Dev Club Head"],
+  },
+
+  // 11. Data Engineer
+  {
+    id: "S011",
+    name: "Sara Khan",
+    email: "sara.khan@university.edu",
+    department: "Data Science",
+    year: 4,
+    cgpa: 9.0,
+    skills: ["Apache Spark", "Hadoop", "SQL", "Scala", "ETL Pipelines"],
+    domains: { web: 40, ml: 85, cp: 60, appDev: 30, cyber: 40 },
+    projects: [
+      {
+        id: "P011",
+        title: "Real-time Traffic Analysis",
+        description: "Streaming data pipeline for traffic sensors",
+        skills: ["Kafka", "Spark", "Python"],
+      },
+    ],
+    experience: [
+      {
+        id: "E004",
+        title: "Data Analyst Intern",
+        company: "FinTech Corp",
+        duration: "4 months",
+        description: "Analyzed transaction datasets using SQL",
+      },
+    ],
+    leadership: [],
+  },
+
+  // 12. iOS Developer (Mobile)
+  {
+    id: "S012",
+    name: "Emily Fernandez",
+    email: "emily.fernandez@university.edu",
+    department: "Computer Science",
+    year: 3,
+    cgpa: 8.6,
+    skills: ["Swift", "iOS", "SwiftUI", "CoreData", "XCode"],
+    domains: { web: 50, ml: 20, cp: 60, appDev: 98, cyber: 45 },
+    projects: [
+      {
+        id: "P012",
+        title: "Budget Tracker iOS",
+        description: "Personal finance app with widget support",
+        skills: ["Swift", "SwiftUI"],
+      },
+    ],
+    experience: [],
+    leadership: ["App Development Mentor"],
+  },
+
+  // 13. UI/UX & Frontend Specialist
+  {
+    id: "S013",
+    name: "Neha Joshi",
+    email: "neha.joshi@university.edu",
+    department: "Design & Technology",
+    year: 2,
+    cgpa: 8.7,
+    skills: ["Figma", "Adobe XD", "Vue.js", "Tailwind CSS", "Three.js"],
+    domains: { web: 95, ml: 10, cp: 40, appDev: 70, cyber: 20 },
+    projects: [
+      {
+        id: "P013",
+        title: "3D Portfolio Site",
+        description: "Interactive portfolio using Three.js",
+        skills: ["Vue.js", "Three.js", "GSAP"],
+      },
+    ],
+    experience: [],
+    leadership: ["Design Lead - Creative Society"],
+  },
+
+  // 14. IoT & Embedded Systems
+  {
+    id: "S014",
+    name: "Varun Rao",
+    email: "varun.rao@university.edu",
+    department: "Electronics & Communication",
+    year: 4,
+    cgpa: 7.8,
+    skills: ["C", "C++", "Arduino", "Raspberry Pi", "MQTT", "PCB Design"],
+    domains: { web: 30, ml: 40, cp: 60, appDev: 50, cyber: 60 },
+    projects: [
+      {
+        id: "P014",
+        title: "Smart Home Hub",
+        description: "IoT system for home automation via voice",
+        skills: ["C++", "MQTT", "Python"],
+      },
+    ],
+    experience: [],
+    leadership: ["Robotics Club President"],
+  },
+];
 
 export const mockOpportunities: Opportunity[] = [
   {
@@ -358,5 +605,5 @@ export function generateTeamRecommendations(currentStudent: Student, allStudents
       }
     })
     .sort((a, b) => b.matchScore - a.matchScore)
-    .slice(0, 5)
+    
 }

@@ -1,24 +1,27 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useAppStore } from "@/lib/store"
 import { StatCard } from "@/components/ui/stat-card"
 import { SkillBadge } from "@/components/ui/skill-badge"
 import { DomainChart } from "@/components/ui/domain-chart"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Switch } from "@/components/ui/switch"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
   BriefcaseIcon,
   DocumentTextIcon,
   ChartBarIcon,
   ArrowUpTrayIcon,
+  ArrowDownTrayIcon,
   UserGroupIcon,
   LightBulbIcon,
   EyeIcon,
   ClockIcon,
   CheckCircleIcon,
+  DocumentIcon,
 } from "@heroicons/react/24/outline"
 import { calculateMatchScore, generateTeamRecommendations } from "@/lib/mock-data"
 import Link from "next/link"
@@ -46,6 +49,12 @@ export default function StudentDashboard() {
   const [extractedSkills, setExtractedSkills] = useState<any[] | null>(null)
   const [selectedOpportunity, setSelectedOpportunity] = useState<any>(null)
 
+  // Resume PDFs State
+  const [resumes, setResumes] = useState<any[]>([])
+  const [loadingResumes, setLoadingResumes] = useState(true)
+  const [pdfUrls, setPdfUrls] = useState<{ [key: string]: string }>({})
+  const [showAnonymizedResumes, setShowAnonymizedResumes] = useState(false)
+
   // State for the chart - initialized with current user domains
   // Normalize old + new domain keys into ONE consistent shape
   const normalizedDomains: DomainData = {
@@ -72,8 +81,61 @@ export default function StudentDashboard() {
   const [dynamicDomains, setDynamicDomains] =
     useState<DomainData>(normalizedDomains)
 
+  // Fetch resumes list from backend
+  useEffect(() => {
+    const fetchResumesList = async () => {
+      try {
+        setLoadingResumes(true)
+        const anonymizedParam = showAnonymizedResumes ? '?anonymized=true' : ''
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/resume/list${anonymizedParam}`)
+        if (response.ok) {
+          const data = await response.json()
+          setResumes(data.resumes || [])
+        }
+      } catch (error) {
+        console.error("Failed to fetch resumes list:", error)
+      } finally {
+        setLoadingResumes(false)
+      }
+    }
 
+    if (currentUser) {
+      // Clear existing PDFs when switching modes
+      setPdfUrls({})
+      fetchResumesList()
+    }
+  }, [currentUser, showAnonymizedResumes])
 
+  // Fetch individual PDF files
+  useEffect(() => {
+    const fetchPDFFile = async (resumeId: string, filename: string) => {
+      try {
+        const anonymizedParam = showAnonymizedResumes ? '?anonymized=true' : ''
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/resume/download/${resumeId}${anonymizedParam}`
+        )
+        if (response.ok) {
+          const blob = await response.blob()
+          const url = URL.createObjectURL(blob)
+          setPdfUrls((prev) => ({ ...prev, [resumeId]: url }))
+        }
+      } catch (error) {
+        console.error(`Failed to fetch PDF ${filename}:`, error)
+      }
+    }
+
+    // Fetch all PDFs once we have the list
+    resumes.forEach((resume) => {
+      if (resume.id && !pdfUrls[resume.id]) {
+        fetchPDFFile(resume.id, resume.filename)
+      }
+    })
+
+    // Cleanup blob URLs on unmount
+    return () => {
+      Object.values(pdfUrls).forEach((url) => URL.revokeObjectURL(url))
+    }
+  }, [resumes, showAnonymizedResumes])
 
   if (!currentUser) return null
 
@@ -172,6 +234,16 @@ export default function StudentDashboard() {
   const handleGenerateTeam = () => {
     const recommendations = generateTeamRecommendations(currentUser, students)
     setTeamRecommendations(recommendations)
+  }
+
+  const handleDownloadResume = (e: React.MouseEvent, pdfUrl: string, filename: string) => {
+    e.stopPropagation() // Prevent opening in new tab
+    const link = document.createElement('a')
+    link.href = pdfUrl
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
   }
 
   const applicationStages = [
@@ -316,6 +388,105 @@ export default function StudentDashboard() {
         </div>
       </Card>
 
+      {/* Resume Section */}
+      <Card className="glass rounded-2xl p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-xl font-semibold text-foreground flex items-center">
+            <DocumentIcon className="h-6 w-6 mr-2" />
+            Resume
+          </h2>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Anonymized</span>
+            <Switch 
+              checked={showAnonymizedResumes} 
+              onCheckedChange={setShowAnonymizedResumes}
+            />
+          </div>
+        </div>
+        <div className="relative">
+          {loadingResumes ? (
+            <div className="flex gap-4 overflow-x-auto pb-4">
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="flex-shrink-0 w-48 h-64 rounded-xl border-2 border-dashed border-border bg-muted/50 flex flex-col items-center justify-center animate-pulse"
+                >
+                  <DocumentIcon className="h-12 w-12 text-muted-foreground" />
+                  <p className="mt-2 text-xs text-muted-foreground">Loading...</p>
+                </div>
+              ))}
+            </div>
+          ) : resumes.length > 0 ? (
+            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-primary/20 scrollbar-track-transparent">
+              {resumes.map((resume, index) => {
+                const pdfUrl = pdfUrls[resume.id]
+                const isLoading = !pdfUrl
+
+                return (
+                  <div
+                    key={resume.id || index}
+                    className="flex-shrink-0 w-48 rounded-xl border border-border bg-card hover:shadow-lg transition-all cursor-pointer group"
+                    onClick={() => pdfUrl && window.open(pdfUrl, '_blank')}
+                  >
+                    <div className="h-56 rounded-t-xl bg-muted/30 flex items-center justify-center border-b border-border relative overflow-hidden">
+                      {isLoading ? (
+                        <div className="flex flex-col items-center">
+                          <DocumentIcon className="h-12 w-12 text-muted-foreground animate-pulse" />
+                          <p className="mt-2 text-xs text-muted-foreground">Loading...</p>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="w-full h-full overflow-hidden relative">
+                            <iframe
+                              src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
+                              className="absolute inset-0 pointer-events-none border-0"
+                              style={{ 
+                                width: 'calc(100% + 20px)',
+                                height: 'calc(100% + 20px)',
+                                overflow: 'hidden'
+                              }}
+                              title={`Preview of ${resume.filename}`}
+                            />
+                          </div>
+                          <button
+                            onClick={(e) => handleDownloadResume(e, pdfUrl, resume.filename)}
+                            className="absolute top-2 right-2 p-2 rounded-lg bg-primary/90 text-primary-foreground opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-primary z-10"
+                            title="Download resume"
+                          >
+                            <ArrowDownTrayIcon className="h-4 w-4" />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                    <div className="p-3">
+                      <p className="text-sm font-medium text-foreground truncate" title={resume.filename || `Resume ${index + 1}`}>
+                        {resume.filename || `Resume ${index + 1}`}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {resume.uploadDate ? new Date(resume.uploadDate).toLocaleDateString() : 'PDF Document'}
+                      </p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <DocumentIcon className="h-16 w-16 text-muted-foreground/50 mb-3" />
+              <p className="text-sm text-muted-foreground">No resumes uploaded yet</p>
+              <Button
+                onClick={() => setShowResumeUpload(true)}
+                className="mt-4"
+                variant="outline"
+                size="sm"
+              >
+                Upload Your First Resume
+              </Button>
+            </div>
+          )}
+        </div>
+      </Card>
+
       {/* Application Timeline */}
       {myApplications.length > 0 && (
         <Card className="glass rounded-2xl p-6">
@@ -326,7 +497,7 @@ export default function StudentDashboard() {
               {applicationStages.map((stage) => (
                 <div key={stage.name} className="relative flex items-start gap-4 pl-10">
                   <div className={`absolute left-0 flex h-8 w-8 items-center justify-center rounded-full border-2 ${stage.status === "complete" ? "border-primary bg-primary" :
-                      stage.status === "current" ? "border-primary bg-background" : "border-border bg-background"
+                    stage.status === "current" ? "border-primary bg-background" : "border-border bg-background"
                     }`}
                   >
                     {stage.status === "complete" && <CheckCircleIcon className="h-5 w-5 text-primary-foreground" />}

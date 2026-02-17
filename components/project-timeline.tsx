@@ -12,8 +12,8 @@ interface Phase {
   project_id: string;
   phase_name: string;
   phase_description: string;
-  start_date: Date;       // or string if coming from API
-  end_date: Date;         // or string if coming from API
+  start_date: String;       // or string if coming from API
+  end_date: String;         // or string if coming from API
   status: PhaseStatus;
   comments?: string | null;
 }
@@ -91,7 +91,7 @@ const ProjectTimeline = ({ phases, userRole, onStatusChange }: ProjectTimelinePr
                     </span>
                   )}
                 <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                  {new Date(phase.start_date).toLocaleDateString()} - {new Date(phase.end_date).toLocaleDateString()}
+                  {phase.start_date} - {phase.end_date}
                 </span>
               </div>
               <p className="text-sm text-gray-600 line-clamp-2">{phase.phase_description}</p>

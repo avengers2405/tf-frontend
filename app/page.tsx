@@ -10,24 +10,26 @@ export default function HomePage() {
   const { currentRole, setCurrentUser, opportunities, students, bulkAddStudents } = useAppStore()
 
   useEffect(() => {
-    // Initialize mock data on first load
-    if (students.length === 0) {
+    const store = useAppStore.getState()
+    
+    // Initialize mock data only once on first load
+    if (store.students.length === 0) {
       bulkAddStudents(mockStudents)
     }
 
-    if (opportunities.length === 0) {
+    if (store.opportunities.length === 0) {
       mockOpportunities.forEach((opp) => {
         useAppStore.getState().addOpportunity(opp)
       })
     }
 
-    if (useAppStore.getState().applications.length === 0) {
+    if (store.applications.length === 0) {
       mockApplications.forEach((app) => {
         useAppStore.getState().addApplication(app)
       })
     }
 
-    if (useAppStore.getState().notifications.length === 0) {
+    if (store.notifications.length === 0) {
       mockNotifications.forEach((notif) => {
         useAppStore.getState().addNotification(notif)
       })
@@ -38,7 +40,7 @@ export default function HomePage() {
 
     // Redirect to appropriate dashboard
     router.push(`/dashboard/${currentRole}`)
-  }, [currentRole, router, setCurrentUser, opportunities, students, bulkAddStudents])
+  }, [currentRole, router, setCurrentUser, bulkAddStudents])
 
   return (
     <div className="flex min-h-screen items-center justify-center">

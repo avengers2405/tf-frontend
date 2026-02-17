@@ -9,6 +9,7 @@ import { SkillBadge } from "@/components/ui/skill-badge"
 import { ArrowLeftIcon, CheckCircleIcon, ClockIcon } from "@heroicons/react/24/outline"
 import { formatDate, getDaysUntil } from "@/lib/utils"
 import { calculateMatchScore } from "@/lib/mock-data"
+import ApplyProjectTeam from "@/components/apply-project"
 
 export default function OpportunityDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params)
@@ -193,9 +194,24 @@ export default function OpportunityDetailPage({ params }: { params: Promise<{ id
                 <p className="text-sm text-muted-foreground">We'll notify you of updates</p>
               </div>
             ) : (
-              <Button onClick={handleApply} disabled={daysLeft <= 0} className="w-full" size="lg">
-                {daysLeft <= 0 ? "Deadline Passed" : "Apply Now"}
-              </Button>
+                <>
+                  {/* CONDITIONAL RENDERING FOR PROJECT VS OTHER OPPORTUNITIES */}
+                  { opportunity.type === "project" ? (
+                    <ApplyProjectTeam 
+                      projectId={opportunity.id} 
+                      teacherId={opportunity.postedBy || ""} 
+                    />
+                  ) : (
+                    <Button 
+                      onClick={handleApply} 
+                      disabled={daysLeft <= 0} 
+                      className="w-full" 
+                      size="lg"
+                    >
+                      {daysLeft <= 0 ? "Deadline Passed" : "Apply Now"}
+                    </Button>
+                  )}
+                </>
             )}
           </Card>
 

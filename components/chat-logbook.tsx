@@ -46,7 +46,7 @@ const ChatLogbook = ({ isOpen, onClose, projectData, userRole }: ChatLogbookProp
         <div className="bg-blue-600 text-white p-4 rounded-t-lg flex items-center justify-between">
           <div className="flex items-center">
             <BookOpen className="w-6 h-6 mr-2" /> 
-            <h3 className="text-lg font-semibold">PRoject Tracker</h3>
+            <h3 className="text-lg font-semibold">Project Tracker</h3>
           </div>
           <button onClick={onClose}><X className="w-6 h-6" /></button>
         </div>

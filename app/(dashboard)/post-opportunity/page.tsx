@@ -28,6 +28,7 @@ export default function PostOpportunityPage() {
     description: "",
     stipend: "",
     duration: "",
+    deadline: "",
     minCGPA: "",
     departments: [] as string[],
     years: [] as number[],
@@ -127,7 +128,7 @@ export default function PostOpportunityPage() {
       },
       postedBy: "Current User",
       postedDate: new Date().toISOString().split("T")[0],
-      deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+      deadline: formData.deadline || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
       applicants: 0,
     }
 
@@ -340,6 +341,17 @@ export default function PostOpportunityPage() {
                 placeholder="e.g., 3-6 months"
                 value={formData.duration}
                 onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="deadline">Application Deadline</Label>
+              <Input
+                id="deadline"
+                type="date"
+                min={new Date().toISOString().split("T")[0]}
+                value={formData.deadline}
+                onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
               />
             </div>
           </div>

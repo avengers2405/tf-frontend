@@ -2,10 +2,19 @@
 //add filter based on project name, team name, team lead name
 //print static projectc data when the project is clicked. 
 import { useState } from 'react';
-import { Users, ClipboardList, TrendingUp } from 'lucide-react';
+import { Users, ClipboardList, TrendingUp, BookOpen } from 'lucide-react';
 import ProjectDashboardView from '../../../../components/project-details';
+import ProjectTimeline from '../../../../components/project-timeline';
+import { ArrowLeft } from 'lucide-react';
+import ChatLogbook from '../../../../components/chat-logbook';
 
 // Static data (Will be replaced by JWT/API call later)
+enum PhaseStatus {
+  OPEN = 'OPEN',
+  CLOSED = 'CLOSED',
+  LOCKED = 'LOCKED',
+}
+
   const projectData = {
     project_id: "101",
     title: 'AI-Powered Campus Management System',
@@ -22,7 +31,50 @@ import ProjectDashboardView from '../../../../components/project-details';
       { name: 'Priya Sharma', role: 'ML Engineer' }
     ],
     startDate: '2025-01-15',
-    expectedCompletion: '2025-05-30'
+    expectedCompletion: '2025-05-30',
+    phases: [
+  {
+    phase_id: 1,
+    project_id: "101",
+    phase_name: "Requirements Gathering",
+    phase_description: "Defining system architecture and user stories.",
+    start_date: "2025-01-15",
+    end_date: "2025-02-01",
+    status: PhaseStatus.CLOSED,
+    comments: "Completed 2 days early."
+  },
+  {
+    phase_id: 2,
+    project_id: "101",
+    phase_name: "Backend Development",
+    phase_description: "Setting up Prisma schema and API endpoints for student management.",
+    start_date: "2025-02-02",
+    end_date: "2025-03-15",
+    status: PhaseStatus.OPEN,
+    comments: null
+  },
+  {
+    phase_id: 3,
+    project_id: "101",
+    phase_name: "Frontend Development",
+    phase_description: "Developing React UI components and integrating with backend APIs.",
+    start_date: "2025-03-16",
+    end_date: "2025-04-10",
+    status: PhaseStatus.OPEN,
+    comments: "UI design in progress."
+  },
+  {
+    phase_id: 4,
+    project_id: "101",
+    phase_name: "Testing & Deployment",
+    phase_description: "Performing unit testing, integration testing, and deploying the application.",
+    start_date: "2025-04-11",
+    end_date: "2025-04-25",
+    status: PhaseStatus.OPEN,
+    comments: null
+  }
+]
+
   };
 
 interface Project {
@@ -37,7 +89,7 @@ interface Project {
 }
 
 export default function TeacherDashboard() {
-     
+  const [isLogbookOpen, setIsLogbookOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [projectFilter, setProjectFilter] = useState('');
   const [teamFilter, setTeamFilter] = useState('');
@@ -123,14 +175,95 @@ export default function TeacherDashboard() {
     setSelectedProject(project);
   };
 
+  const handleStatusChange = (phaseId: number, newStatus: string) => {
+  console.log(`Phase ${phaseId} updated to ${newStatus}`);
+  // In the future, add your API call here to update the DB
+};
+
   if (selectedProject) {
     return (
-      <ProjectDashboardView 
-        projectData={projectData} 
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-5xl mx-auto space-y-6">
+        {/* Navigation Header */}
+        <div className="flex items-center justify-between">
+          <button 
+            onClick={() => setSelectedProject(null)}
+            className="flex items-center text-gray-600 hover:text-blue-600 transition-colors font-medium"
+          >
+            <ArrowLeft className="w-5 h-5 mr-2" />
+            Back to Dashboard
+          </button>
+        </div>
+
+        {/* 1. Project Details (Full Width) */}
+        <div className="w-full">
+          <ProjectDashboardView projectData={projectData} />
+        </div>
+
+        {/* 2. Actions & Live Tracker (Side-by-Side on MD+, Stacked on Mobile) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Smart Logbook Button Card */}
+          <div className="bg-white rounded-lg shadow-md p-6 flex flex-col justify-center border border-blue-50">
+            <h3 className="text-sm font-semibold text-gray-700 mb-2 flex items-center">
+              <BookOpen className="w-4 h-4 mr-2 text-blue-600" />
+              Project Documentation
+            </h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Access the automated logbook and project history.
+            </p>
+            <button
+              onClick={() => setIsLogbookOpen(true)}
+              className="w-full flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-sm font-medium"
+            >
+              Open Smart Logbook
+            </button>
+          </div>
+
+          {/* Live Progress Card */}
+          <div className="bg-white rounded-lg shadow-md p-6 border border-gray-100">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+              <TrendingUp className="w-4 h-4 mr-2 text-blue-600" />
+              Live Progress
+            </h3>
+            <div className="flex items-end justify-between mb-2">
+              <span className="text-4xl font-bold text-blue-600">{selectedProject.progress}%</span>
+              <span className="text-sm text-gray-400 pb-1">Completion Status</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-3">
+              <div 
+                className="bg-blue-600 h-3 rounded-full transition-all duration-700 ease-out" 
+                style={{ width: `${selectedProject.progress}%` }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* 3. Project Timeline (Now at the Bottom, Full Width) */}
+        <div className="bg-white rounded-lg shadow-md p-8 border border-gray-100">
+          <div className="flex items-center mb-6 border-b pb-4">
+            <ClipboardList className="w-6 h-6 mr-3 text-blue-600" />
+            <div>
+              <h3 className="text-xl font-bold text-gray-900">Project Timeline</h3>
+              <p className="text-sm text-gray-500">Milestones and phase progress</p>
+            </div>
+          </div>
+          <ProjectTimeline 
+          phases={projectData.phases} 
+          userRole="TEACHER" 
+          onStatusChange={handleStatusChange}
+             />
+        </div>
+      </div>
+
+      {/* Modal-based Logbook */}
+      <ChatLogbook 
+        isOpen={isLogbookOpen}
+        onClose={() => setIsLogbookOpen(false)}
+        projectData={projectData}
         userRole="TEACHER"
-        onBack={() => setSelectedProject(null)} // Add a back button handler
       />
-    );
+    </div>
+  );
   }
   return (
     <div className="flex h-screen bg-gray-50">

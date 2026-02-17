@@ -91,7 +91,8 @@ const ProjectDashboardView = ({ projectData, userRole = 'STUDENT' }: ProjectView
                 Team Members
               </h3>
               <div className="space-y-2">
-                {projectData.members.map((member: any, index: number) => (
+              {projectData.members?.map((member: any, index: number) => (
+
                   <div key={index} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
                     <span className="text-gray-900 font-medium">{member.name}</span>
                     <span className="text-sm text-gray-600">{member.role}</span>

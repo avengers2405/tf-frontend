@@ -246,15 +246,6 @@ export default function StudentDashboard() {
     document.body.removeChild(link)
   }
 
-  const applicationStages = [
-    { name: "Applied", status: "complete", date: "2025-01-20" },
-    { name: "Screening", status: "complete", date: "2025-01-22" },
-    { name: "Test", status: "current", date: "2025-01-26" },
-    { name: "Interview", status: "upcoming", date: "TBD" },
-    { name: "HR Round", status: "upcoming", date: "TBD" },
-    { name: "Final", status: "upcoming", date: "TBD" },
-  ]
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -486,33 +477,6 @@ export default function StudentDashboard() {
           )}
         </div>
       </Card>
-
-      {/* Application Timeline */}
-      {myApplications.length > 0 && (
-        <Card className="glass rounded-2xl p-6">
-          <h2 className="mb-6 text-xl font-semibold text-foreground">Application Timeline</h2>
-          <div className="relative">
-            <div className="absolute left-4 top-0 h-full w-0.5 bg-border" />
-            <div className="space-y-6">
-              {applicationStages.map((stage) => (
-                <div key={stage.name} className="relative flex items-start gap-4 pl-10">
-                  <div className={`absolute left-0 flex h-8 w-8 items-center justify-center rounded-full border-2 ${stage.status === "complete" ? "border-primary bg-primary" :
-                    stage.status === "current" ? "border-primary bg-background" : "border-border bg-background"
-                    }`}
-                  >
-                    {stage.status === "complete" && <CheckCircleIcon className="h-5 w-5 text-primary-foreground" />}
-                    {stage.status === "current" && <ClockIcon className="h-5 w-5 text-primary" />}
-                  </div>
-                  <div className="flex-1 pb-4">
-                    <h3 className="font-semibold text-foreground">{stage.name}</h3>
-                    <p className="text-sm text-muted-foreground">{stage.date}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </Card>
-      )}
 
       {/* --- DIALOGS --- */}
 

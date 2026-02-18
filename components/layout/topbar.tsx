@@ -13,12 +13,12 @@ export function Topbar() {
     <div className="glass sticky top-0 z-10 flex h-16 items-center justify-between border-b border-border px-6">
       <div className="flex items-center gap-4 flex-1">
         <div className="relative max-w-md w-full">
-          <MagnifyingGlassIcon className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+          {/* <MagnifyingGlassIcon className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
             placeholder="Search opportunities, students..."
             className="w-full rounded-lg border border-border bg-background pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-          />
+          /> */}
         </div>
       </div>
 

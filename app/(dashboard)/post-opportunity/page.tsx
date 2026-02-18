@@ -17,6 +17,7 @@ export default function PostOpportunityPage() {
   const router = useRouter()
   const { addOpportunity } = useAppStore()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5000"
 
   const [isParsing, setIsParsing] = useState(false)
   const [fileName, setFileName] = useState("")
@@ -108,8 +109,17 @@ export default function PostOpportunityPage() {
     setTags(tags.filter((t) => t !== tag))
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    const resolvedDeadline =
+      formData.deadline ||
+      new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .split("T")[0]
+
+    const parsedMinCgpa = Number.parseFloat(formData.minCGPA)
+    const minCgpaForBackend = Number.isFinite(parsedMinCgpa) ? parsedMinCgpa : 0
 
     const newOpportunity = {
       id: `OP${Date.now()}`,
@@ -128,17 +138,39 @@ export default function PostOpportunityPage() {
       },
       postedBy: "Current User",
       postedDate: new Date().toISOString().split("T")[0],
-      deadline: formData.deadline || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+      deadline: resolvedDeadline,
       applicants: 0,
     }
 
     addOpportunity(newOpportunity)
 
+    let backendSyncSuccessful = false
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/drives`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          company_name: formData.company,
+          min_cgpa: minCgpaForBackend,
+          registration_deadline: resolvedDeadline,
+        }),
+      })
+
+      backendSyncSuccessful = response.ok
+    } catch (error) {
+      console.error("Drive sync error:", error)
+    }
+
     useAppStore.getState().addNotification({
       id: `N${Date.now()}`,
       title: "Opportunity Posted",
-      message: `${formData.title} has been posted successfully!`,
-      type: "success",
+      message: backendSyncSuccessful
+        ? `${formData.title} has been posted and synced to backend.`
+        : `${formData.title} has been posted locally. Backend sync failed.`,
+      type: backendSyncSuccessful ? "success" : "warning",
       read: false,
       timestamp: new Date().toISOString(),
     })

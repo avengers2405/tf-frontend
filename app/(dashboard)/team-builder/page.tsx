@@ -437,8 +437,8 @@ export default function TeamBuilderPage() {
             <div className="bg-primary/5 p-6 border-b flex justify-between items-start">
               <div>
                 <h3 className="text-xl font-bold text-foreground">{selectedTeam.name}</h3>
-                <p className="text-sm text-muted-foreground">
-                  Created on {selectedTeam.createdAt.toLocaleDateString()}
+                <p className="text-[10px] font-mono text-primary bg-primary/5 px-2 py-0.5 mt-1 rounded border border-primary/20 w-fit">
+                  Group ID: {selectedTeam.id}
                 </p>
               </div>
               <button 
@@ -464,16 +464,19 @@ export default function TeamBuilderPage() {
                       <p className="font-medium text-foreground">{member.name}</p>
                       {/* You can add department or role here if available in member object */}
                       <p className="text-xs text-muted-foreground">Member</p>
+                      <p className="text-xs text-muted-foreground">
+                        {member.department || "No Department listed"}
+                      </p>
                     </div>
                   </div>
                 ))}
               </div>
               
-              <div className="mt-6 pt-4 border-t flex justify-end">
+              {/* <div className="mt-6 pt-4 border-t flex justify-end">
                 <Button variant="outline" onClick={() => setSelectedTeam(null)}>
                   Close
                 </Button>
-              </div>
+              </div> */}
             </div>
           </Card>
         </div>

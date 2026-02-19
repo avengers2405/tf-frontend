@@ -15,9 +15,9 @@ interface DomainChartProps {
   domains: {
     web: number
     ml: number
-    core: number
-    systems: number
-    tools: number
+    cp: number
+    appDev: number
+    cyber: number
   }
 }
 
@@ -33,9 +33,9 @@ export function DomainChart({ domains }: DomainChartProps) {
   const data = [
     { name: "Web Development", value: domains.web },
     { name: "AI / Machine Learning", value: domains.ml },
-    { name: "Core Programming", value: domains.core },
-    { name: "Backend & Systems", value: domains.systems },
-    { name: "Tools & Platforms", value: domains.tools },
+    { name: "Competitive Programming", value: domains.cp },
+    { name: "App Development", value: domains.appDev },
+    { name: "Cybersecurity", value: domains.cyber },
   ]
 
   return (

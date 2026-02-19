@@ -91,7 +91,8 @@ const ProjectDashboardView = ({ projectData, userRole = 'STUDENT' }: ProjectView
                 Team Members
               </h3>
               <div className="space-y-2">
-                {projectData.members.map((member: any, index: number) => (
+              {projectData.members?.map((member: any, index: number) => (
+
                   <div key={index} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
                     <span className="text-gray-900 font-medium">{member.name}</span>
                     <span className="text-sm text-gray-600">{member.role}</span>
@@ -100,44 +101,6 @@ const ProjectDashboardView = ({ projectData, userRole = 'STUDENT' }: ProjectView
               </div>
             </div>
       </div>
-
-      {/* Logbook Tool (Always visible for students, maybe optional for teachers) */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Tools & Resources</h3>
-        <button
-          onClick={() => setIsChatbotOpen(true)}
-          className="flex items-center justify-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <BookOpen className="w-5 h-5 mr-2" /> Open Smart Logbook
-        </button>
-      </div>
-
-      {/* Chatbot Modal */}
-      {isChatbotOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl h-[600px] flex flex-col">
-            <div className="bg-blue-600 text-white p-4 rounded-t-lg flex items-center justify-between">
-              <div className="flex items-center"><BookOpen className="w-6 h-6 mr-2" /> <h3 className="text-lg font-semibold">Assistant</h3></div>
-              <button onClick={() => setIsChatbotOpen(false)}><X className="w-6 h-6" /></button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              <CommitLog projectId={projectData.project_id} />
-              {isLoading && <div className="animate-pulse bg-gray-100 h-10 w-20 rounded" />}
-            </div>
-            {/* Input area... simplified for brevity */}
-           {userRole === "TEACHER" && (
-            <div className="border-t p-4 flex space-x-2">
-              <textarea 
-                value={inputMessage} 
-                 onChange={(e) => setInputMessage(e.target.value)}
-                className="flex-1 border rounded-lg p-2"
-                placeholder="Type here..."
-              />
-              <button onClick={handleSendMessage} className="bg-blue-600 text-white px-4 py-2 rounded-lg"><Send /></button>
-            </div>)}
-          </div>
-        </div>
-      )}
     </div>
   );
 };

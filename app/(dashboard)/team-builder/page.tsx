@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useAppStore } from "@/lib/store"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -14,34 +13,112 @@ import {
   XMarkIcon, 
   CheckCircleIcon 
 } from "@heroicons/react/24/outline"
-import { generateTeamRecommendations } from "@/lib/mock-data"
 import { toast } from "sonner"
+import { useUser } from "@/contexts/UserContext"
+
+// Helper function to transform domains array to object format
+const transformDomains = (domainsArray: any[]) => {
+  const domainsObj = {
+    web: 0,
+    ml: 0,
+    cp: 0,
+    appDev: 0,
+    cyber: 0
+  };
+  
+  domainsArray?.forEach(domain => {
+    const name = domain.name.toLowerCase();
+    if (name.includes('web')) domainsObj.web = domain.value;
+    else if (name.includes('machine learning') || name.includes('ai')) domainsObj.ml = domain.value;
+    else if (name.includes('competitive')) domainsObj.cp = domain.value;
+    else if (name.includes('app')) domainsObj.appDev = domain.value;
+    else if (name.includes('cyber')) domainsObj.cyber = domain.value;
+  });
+  
+  return domainsObj;
+};
 
 export default function TeamBuilderPage() {
-  const { currentUser, students, teamRecommendations, setTeamRecommendations } = useAppStore()
+  const { user: currentUser, loading: userLoading } = useUser()
   
   // Local state for Team Creation
   const [myTeams, setMyTeams] = useState<any[]>([]) 
   const [isCreating, setIsCreating] = useState(false)
   const [draftTeamName, setDraftTeamName] = useState("")
   const [draftMembers, setDraftMembers] = useState<any[]>([])
+  const [students, setStudents] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
   // State for the Team Details Popup
   const [selectedTeam, setSelectedTeam] = useState<any>(null)
 
   useEffect(() => {
-    if (currentUser && teamRecommendations.length === 0) {
-      const recommendations = generateTeamRecommendations(currentUser, students)
-      setTeamRecommendations(recommendations)
-    }
-  }, [currentUser, students, teamRecommendations, setTeamRecommendations])
+    const fetchStudents = async () => {
+      try {
+        const response = await fetch("http://localhost:5000/api/students");
+        const data = await response.json();
+        console.log("Fetched students:", data);
+        if (response.ok) {
+          // Transform the data to include the domains in the expected format
+          const transformedStudents = data.map((student: any) => ({
+            ...student,
+            domains: transformDomains(student.domains),
+            skills: student.skills || [],
+            matchScore: Math.floor(Math.random() * 40) + 60 // Generate mock match score
+          }));
+          setStudents(transformedStudents);
+        }
+      } catch (error) {
+        console.error("Error fetching students:", error);
+        toast.error("Failed to load students from database.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchStudents();
+  }, []);
+
+  useEffect(() => {
+    const fetchMyTeams = async () => {
+      // Wait until the user context provides the ID
+      if (!currentUser?.id) return;
+
+      try {
+        setIsLoading(true);
+        const response = await fetch(`http://localhost:5000/api/team-builder/get-my-teams/${currentUser.id}`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          // data is already the formatted array from your controller
+          setMyTeams(data);
+        } else {
+          const errorData = await response.json();
+          console.error("Team fetch failed:", errorData.error);
+        }
+      } catch (error) {
+        console.error("Network error fetching teams:", error);
+        toast.error("Connection lost. Could not sync teams.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchMyTeams();
+  }, [currentUser?.id]);
 
   // --- Handlers ---
 
   const startCreation = () => {
     if (!currentUser) return
+     
+    const formattedUser = {
+      ...currentUser,
+      name: currentUser.name || currentUser.full_name || currentUser.username
+  }
+
     setIsCreating(true)
-    setDraftMembers([currentUser]) 
+    setDraftMembers([formattedUser]) 
     setDraftTeamName("")
   }
 
@@ -63,29 +140,57 @@ export default function TeamBuilderPage() {
     }
   }
 
-  const saveTeam = () => {
-    if (!draftTeamName.trim()) {
-      toast.error("Please give your team a name.")
-      return
-    }
-    if (draftMembers.length < 2) {
-      toast.error("A team needs at least 2 members.")
-      return
-    }
-
-    // Creating a unique ID allows multiple teams with the exact same members
-    const newTeam = {
-      id: crypto.randomUUID(),
-      name: draftTeamName,
-      members: draftMembers,
-      createdAt: new Date()
-    }
-
-    setMyTeams(prev => [...prev, newTeam])
-    setIsCreating(false)
-    setDraftMembers([])
-    toast.success(`Team "${draftTeamName}" created successfully!`)
+  const saveTeam = async () => {
+  if (!draftTeamName.trim()) {
+    toast.error("Please give your team a name.");
+    return;
   }
+  if (draftMembers.length < 2) {
+    toast.error("A team needs at least 2 members.");
+    return;
+  }
+  if (!currentUser) {
+    toast.error("User not authenticated.");
+    return;
+  }
+
+  try {
+    const response = await fetch('http://localhost:5000/api/team-builder/create-team', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        group_name: draftTeamName,
+        // Send IDs of selected teammates (already registration_numbers from /students fetch)
+        student_ids: draftMembers
+          .filter(m => m.id !== currentUser.id) // Filter out the currentUser's user_id
+          .map(m => m.registration_number),
+        // Send the creator's user_id for backend lookup
+        creator_user_id: currentUser.id 
+      })
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      const newTeam = {
+        id: data.group_id, 
+        name: draftTeamName,
+        members: draftMembers,
+        createdAt: new Date(),
+      };
+
+      setMyTeams(prev => [newTeam, ...prev]);
+      setIsCreating(false);
+      setDraftMembers([]);
+      setDraftTeamName("");
+      toast.success(`Team created! ID: ${data.group_id}`);
+    } else {
+      toast.error(data.error || "Failed to create team");
+    }
+  } catch (error) {
+    toast.error("Connection error. Please try again.");
+  }
+}
 
   const cancelCreation = () => {
     setIsCreating(false)
@@ -93,12 +198,25 @@ export default function TeamBuilderPage() {
   }
 
   const handleRegenerateRecommendations = () => {
-    if(!currentUser) return
-    const recommendations = generateTeamRecommendations(currentUser, students)
-    setTeamRecommendations(recommendations)
+    // Shuffle the students array to simulate regeneration
+    const shuffled = [...students].sort(() => Math.random() - 0.5);
+    setStudents(shuffled.map(student => ({
+      ...student,
+      matchScore: Math.floor(Math.random() * 40) + 60
+    })));
   }
 
-  if (!currentUser) return null
+  if (userLoading) {
+    return <div className="flex items-center justify-center h-96">
+      <div className="text-lg">Loading user...</div>
+    </div>
+  }
+
+  if (!currentUser) {
+    return <div className="flex items-center justify-center h-96">
+      <div className="text-lg">Please log in to access team builder.</div>
+    </div>
+  }
 
   return (
     <div className="space-y-8 pb-12 relative">
@@ -121,47 +239,6 @@ export default function TeamBuilderPage() {
           </Button>
         </div>
       </div>
-
-      {/* --- My Teams List --- */}
-      {myTeams.length > 0 && (
-        <section>
-          <h2 className="mb-4 text-xl font-semibold text-foreground flex items-center">
-            <UserGroupIcon className="mr-2 h-5 w-5" />
-            My Teams ({myTeams.length})
-          </h2>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {myTeams.map((team) => (
-              <Card 
-                key={team.id} 
-                // Added onClick to open modal and hover effects
-                onClick={() => setSelectedTeam(team)}
-                className="glass rounded-2xl p-5 border-l-4 border-l-primary shadow-sm hover:shadow-md cursor-pointer transition-all hover:scale-[1.02]"
-              >
-                <div className="flex justify-between items-start mb-4 border-b pb-3">
-                  <div>
-                    <h3 className="font-bold text-lg">{team.name}</h3>
-                    <p className="text-xs text-muted-foreground">
-                      Created {team.createdAt.toLocaleDateString()}
-                    </p>
-                  </div>
-                  <span className="bg-primary/10 text-primary text-xs font-medium px-2 py-1 rounded-full">
-                    {team.members.length} Members
-                  </span>
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  {team.members.map((member: any) => (
-                    <div key={member.id} className="flex items-center gap-2 text-sm text-foreground/80">
-                      <div className="h-1.5 w-1.5 rounded-full bg-primary" />
-                      {member.name}
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            ))}
-          </div>
-        </section>
-      )}
 
       {/* --- Active Creation Staging Area --- */}
       {isCreating && (
@@ -206,89 +283,150 @@ export default function TeamBuilderPage() {
         </Card>
       )}
 
+      {/* --- My Teams List --- */}
+      {myTeams.length > 0 && (
+        <section>
+          <h2 className="mb-4 text-xl font-semibold text-foreground flex items-center">
+            <UserGroupIcon className="mr-2 h-5 w-5" />
+            My Teams ({myTeams.length})
+          </h2>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {myTeams.map((team) => (
+              <Card 
+                key={team.id} 
+                // Added onClick to open modal and hover effects
+                onClick={() => setSelectedTeam(team)}
+                className="glass rounded-2xl p-5 border-l-4 border-l-primary shadow-sm hover:shadow-md cursor-pointer transition-all hover:scale-[1.02]"
+              >
+              <div className="flex justify-between items-start mb-4 border-b pb-3">
+                <div>
+                  <h3 className="font-bold text-lg">{team.name}</h3>
+                  <div className="flex flex-col gap-1">
+                    <p className="text-[10px] font-mono text-primary bg-primary/5 px-2 py-0.5 rounded border border-primary/20 w-fit">
+                      ID: {team.id}
+                    </p>
+                  </div>
+                </div>
+                <span className="bg-primary/10 text-primary text-xs font-medium px-2 py-1 rounded-full">
+                  {team.members.length} Members
+                </span>
+              </div>
+
+                <div className="flex flex-col gap-2">
+                  {team.members.map((member: any) => (
+                    <div key={member.id} className="flex items-center gap-2 text-sm text-foreground/80">
+                      <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+                      {member.name}
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* --- Recommendations Grid --- */}
       <div>
         <h2 className="mb-4 text-xl font-semibold text-foreground">
           {isCreating ? "Select Teammates" : "Recommended Teammates"}
         </h2>
         
-        <div className="grid gap-6 md:grid-cols-2">
-          {teamRecommendations.map((member) => {
-            const student = students.find((s) => s.id === member.id)
-            if (!student) return null
-
-            const isSelected = draftMembers.some(m => m.id === member.id)
-
-            return (
-              <Card 
-                key={member.id} 
-                className={`glass rounded-2xl p-6 transition-all duration-200 ${
-                  isSelected ? "ring-2 ring-primary border-primary bg-primary/5" : ""
-                }`}
-              >
-                <div className="mb-4 flex items-start justify-between">
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-foreground flex items-center gap-2">
-                      {member.name}
-                      {isSelected && <CheckCircleIcon className="w-5 h-5 text-primary" />}
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      {student.department} • Year {student.year}
-                    </p>
-                  </div>
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                    <span className="text-sm font-bold text-primary">{member.matchScore}%</span>
-                  </div>
-                </div>
-
-                <div className="mb-4">
-                  <h4 className="mb-2 text-sm font-medium text-foreground">Skills</h4>
-                  <div className="flex flex-wrap gap-1">
-                    {member.skills.slice(0, 6).map((skill) => {
-                      const isComplementary = !currentUser.skills.includes(skill)
-                      return <SkillBadge key={skill} skill={skill} variant={isComplementary ? "matched" : "default"} />
-                    })}
-                  </div>
-                </div>
-
-                <div className="mb-4 h-32">
-                  <h4 className="mb-2 text-sm font-medium text-foreground">Domain Strength</h4>
-                  <DomainChart domains={member.domains} />
-                </div>
-
-                <div className="flex gap-2">
-                  {isCreating ? (
-                    <Button 
-                      size="sm" 
-                      className="flex-1" 
-                      variant={isSelected ? "secondary" : "default"}
-                      onClick={() => toggleMemberSelection(member)}
-                    >
-                      {isSelected ? (
-                        <>
-                          <XMarkIcon className="mr-2 h-4 w-4" /> Remove
-                        </>
-                      ) : (
-                        <>
-                          <PlusIcon className="mr-2 h-4 w-4" /> Add to Team
-                        </>
-                      )}
-                    </Button>
-                  ) : (
-                    <Button size="sm" className="flex-1" onClick={startCreation}>
-                      <UserGroupIcon className="mr-2 h-4 w-4" />
-                      Start Team with {member.name.split(' ')[0]}
-                    </Button>
-                  )}
-                  
-                  <Button size="sm" variant="outline">
-                    View Profile
-                  </Button>
-                </div>
+        {isLoading ? (
+          <div className="grid gap-6 md:grid-cols-2">
+            {[...Array(4)].map((_, i) => (
+              <Card key={i} className="glass rounded-2xl p-6 animate-pulse">
+                <div className="h-20 bg-gray-200 rounded mb-4"></div>
+                <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
               </Card>
-            )
-          })}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid gap-6 md:grid-cols-2">
+            {students.filter(student => student.name).map((student) => {
+              if (!student) return null
+
+              const isSelected = draftMembers.some(m => m.id === student.id)
+
+              return (
+                <Card 
+                  key={student.id} 
+                  className={`glass rounded-2xl p-6 transition-all duration-200 ${
+                    isSelected ? "ring-2 ring-primary border-primary bg-primary/5" : ""
+                  }`}
+                >
+                  <div className="mb-4 flex items-start justify-between">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-foreground flex items-center gap-2">
+                        {student.name}
+                        {isSelected && <CheckCircleIcon className="w-5 h-5 text-primary" />}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        {student.department || 'No Department'} • Year {student.year}
+                      </p>
+                    </div>
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                      <span className="text-sm font-bold text-primary">{student.matchScore}%</span>
+                    </div>
+                  </div>
+
+                  <div className="mb-4">
+                    <h4 className="mb-2 text-sm font-medium text-foreground">Skills</h4>
+                    <div className="flex flex-wrap gap-1">
+                      {student.skills && student.skills.length > 0 ? (
+                        student.skills.slice(0, 6).map((skill: string, index: number) => (
+                          <SkillBadge 
+                            key={`${skill}-${index}`} 
+                            skill={skill} 
+                            variant={currentUser?.skills?.includes(skill) ? "default" : "matched"} 
+                          />
+                        ))
+                      ) : (
+                        <span className="text-sm text-muted-foreground">No skills listed</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mb-4 h-32">
+                    <h4 className="mb-2 text-sm font-medium text-foreground">Domain Strength</h4>
+                    <DomainChart domains={student.domains} />
+                  </div>
+
+                  <div className="flex gap-2">
+                    {isCreating ? (
+                      <Button 
+                        size="sm" 
+                        className="flex-1" 
+                        variant={isSelected ? "secondary" : "default"}
+                        onClick={() => toggleMemberSelection(student)}
+                      >
+                        {isSelected ? (
+                          <>
+                            <XMarkIcon className="mr-2 h-4 w-4" /> Remove
+                          </>
+                        ) : (
+                          <>
+                            <PlusIcon className="mr-2 h-4 w-4" /> Add to Team
+                          </>
+                        )}
+                      </Button>
+                    ) : (
+                      <Button size="sm" className="flex-1" onClick={startCreation}>
+                        <UserGroupIcon className="mr-2 h-4 w-4" />
+                        Start Team with {student.name.split(' ')[0]}
+                      </Button>
+                    )}
+                    
+                    <Button size="sm" variant="outline">
+                      View Profile
+                    </Button>
+                  </div>
+                </Card>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       {/* --- Team Details Modal / Popup --- */}
@@ -299,8 +437,8 @@ export default function TeamBuilderPage() {
             <div className="bg-primary/5 p-6 border-b flex justify-between items-start">
               <div>
                 <h3 className="text-xl font-bold text-foreground">{selectedTeam.name}</h3>
-                <p className="text-sm text-muted-foreground">
-                  Created on {selectedTeam.createdAt.toLocaleDateString()}
+                <p className="text-[10px] font-mono text-primary bg-primary/5 px-2 py-0.5 mt-1 rounded border border-primary/20 w-fit">
+                  Group ID: {selectedTeam.id}
                 </p>
               </div>
               <button 
@@ -326,16 +464,19 @@ export default function TeamBuilderPage() {
                       <p className="font-medium text-foreground">{member.name}</p>
                       {/* You can add department or role here if available in member object */}
                       <p className="text-xs text-muted-foreground">Member</p>
+                      <p className="text-xs text-muted-foreground">
+                        {member.department || "No Department listed"}
+                      </p>
                     </div>
                   </div>
                 ))}
               </div>
               
-              <div className="mt-6 pt-4 border-t flex justify-end">
+              {/* <div className="mt-6 pt-4 border-t flex justify-end">
                 <Button variant="outline" onClick={() => setSelectedTeam(null)}>
                   Close
                 </Button>
-              </div>
+              </div> */}
             </div>
           </Card>
         </div>

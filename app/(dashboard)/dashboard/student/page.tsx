@@ -8,7 +8,10 @@ import { SkillBadge } from "@/components/ui/skill-badge"
 import { DomainChart } from "@/components/ui/domain-chart"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { useEffect } from "react"
+=======
 import { Switch } from "@/components/ui/switch"
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
   BriefcaseIcon,
@@ -25,8 +28,10 @@ import {
 } from "@heroicons/react/24/outline"
 import { calculateMatchScore, generateTeamRecommendations } from "@/lib/mock-data"
 import Link from "next/link"
+import { analyzeSkillGap } from "@/lib/skill-gap-analysis/gap"
+import { calculateSkillImportance } from "@/lib/skill-gap-analysis/importance"
+import { normalizeSkillList } from "@/lib/skill-gap-analysis/normalize"
 
-// Interface to match your DomainChart props exactly
 interface DomainData {
   web: number
   ml: number
@@ -77,9 +82,21 @@ export default function StudentDashboard() {
       0,
   }
 
+  useEffect(() => {
+    const storedSkills = localStorage.getItem("parsedSkills")
+
+    if (storedSkills) {
+      setExtractedSkills(JSON.parse(storedSkills))
+    }
+  }, [])
+
+  const resumeSkillList = extractedSkills
+  ? normalizeSkillList(extractedSkills.map((s: any) => s.skill))
+  : []
   // State for chart (THIS WAS CORRECT)
   const [dynamicDomains, setDynamicDomains] =
     useState<DomainData>(normalizedDomains)
+
 
   // Fetch resumes list from backend
   useEffect(() => {
@@ -149,6 +166,26 @@ export default function StudentDashboard() {
     .sort((a, b) => b.matchScore - a.matchScore)
     .slice(0, 3)
 
+  // 🔥 Global skill-gap summary across ALL opportunities
+const skillImportance = calculateSkillImportance(opportunities)
+
+const allOpportunitySkills = opportunities.flatMap((o) => o.skills)
+
+// Matched vs missing across entire opportunity pool
+const { missing: globalMissingSkills } = analyzeSkillGap(
+  resumeSkillList,
+  allOpportunitySkills
+)
+
+// Rank missing skills by importance
+const prioritizedMissingSkills = skillImportance
+  .filter((s) =>
+    globalMissingSkills.some(
+      (m) => m.toLowerCase() === s.skill
+    )
+  )
+  .slice(0, 8) // show top 8 only
+
   const allRequiredSkills = new Set(opportunities.flatMap((o) => o.skills))
   const missingSkills = Array.from(allRequiredSkills)
     .filter(
@@ -169,11 +206,19 @@ export default function StudentDashboard() {
     formData.append("resume", file)
 
     try {
+
+    
+    const response = await fetch("http://localhost:5000/resumeParser/parse-resume", {
+      method: "POST",
+      body: formData,
+    })
+
       console.log("Going for: ", `${process.env.NEXT_PUBLIC_BACKEND_URL}/resume/upload`)
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/resume/upload`, {
-        method: "POST",
-        body: formData,
-      })
+//       const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/resume/upload`, {
+//         method: "POST",
+//         body: formData,
+//       })
+
 
       if (!response.ok) throw new Error("Connection to backend failed")
 
@@ -182,7 +227,10 @@ export default function StudentDashboard() {
       if (data.success) {
         // 1. Update list of badges
         setExtractedSkills(data.skills)
-
+        localStorage.setItem(
+        "parsedSkills",
+        JSON.stringify(data.skills)
+      )
         // 2. Update Domain Chart (Mapping backend categories to UI bars)
         const newChart: DomainData = {
           web: 0,
@@ -367,17 +415,31 @@ export default function StudentDashboard() {
       </Card>
 
       {/* Missing Skills */}
-      <Card className="glass rounded-2xl p-6">
-        <h2 className="mb-4 text-xl font-semibold text-foreground">Skill Gap Analysis</h2>
-        <p className="mb-4 text-sm text-muted-foreground">
-          Based on top opportunities, consider learning these skills:
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {missingSkills.map((skill) => (
-            <SkillBadge key={skill} skill={skill} variant="missing" />
-          ))}
-        </div>
-      </Card>
+<Card className="glass rounded-2xl p-6">
+  <h2 className="mb-2 text-xl font-semibold text-foreground">
+    Skill Gap Analysis
+  </h2>
+
+  <p className="mb-4 text-sm text-muted-foreground">
+    Based on current opportunities and your resume, focus on improving these high-impact skills:
+  </p>
+
+  {prioritizedMissingSkills.length > 0 ? (
+    <div className="flex flex-wrap gap-2">
+      {prioritizedMissingSkills.map((s) => (
+        <SkillBadge
+          key={s.skill}
+          skill={s.skill}
+          variant="missing"
+        />
+      ))}
+    </div>
+  ) : (
+    <p className="text-sm text-green-600 font-medium">
+      🎉 Great job! You meet the key skill requirements for current opportunities.
+    </p>
+  )}
+</Card>
 
       {/* Resume Section */}
       <Card className="glass rounded-2xl p-6">

@@ -11,14 +11,21 @@ import { formatDate, getDaysUntil } from "@/lib/utils"
 import { calculateMatchScore } from "@/lib/mock-data"
 import ApplyProjectTeam from "@/components/apply-project"
 
-export default function OpportunityDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default function OpportunityDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}) {
   const resolvedParams = use(params)
   const router = useRouter()
   const { opportunities, currentUser, applications, addApplication } = useAppStore()
 
   const opportunity = opportunities.find((o) => o.id === resolvedParams.id)
+
   const hasApplied = applications.some(
-    (app) => app.opportunityId === resolvedParams.id && app.studentId === currentUser?.id,
+    (app) =>
+      app.opportunityId === resolvedParams.id &&
+      app.studentId === currentUser?.id,
   )
 
   if (!opportunity) {
@@ -32,9 +39,12 @@ export default function OpportunityDetailPage({ params }: { params: Promise<{ id
     )
   }
 
-  const matchScore = currentUser ? calculateMatchScore(currentUser.skills, opportunity.skills) : 0
+  const matchScore = currentUser
+    ? calculateMatchScore(currentUser.skills, opportunity.skills)
+    : 0
 
   const daysLeft = getDaysUntil(opportunity.deadline)
+  const isDeadlinePassed = daysLeft <= 0
 
   const applicationStages = [
     { name: "Applied", status: "complete", date: "2025-01-20" },
@@ -60,7 +70,6 @@ export default function OpportunityDetailPage({ params }: { params: Promise<{ id
 
     addApplication(newApplication)
 
-    // Add notification
     useAppStore.getState().addNotification({
       id: `N${Date.now()}`,
       title: "Application Submitted",
@@ -72,6 +81,11 @@ export default function OpportunityDetailPage({ params }: { params: Promise<{ id
 
     router.push("/applications")
   }
+
+  // const handleFillForm = () => {
+  //   if (!opportunity.formLink) return
+  //   window.open(opportunity.formLink, "_blank")
+  // }
 
   return (
     <div className="space-y-6">
@@ -87,16 +101,21 @@ export default function OpportunityDetailPage({ params }: { params: Promise<{ id
             <div className="mb-4">
               <div className="mb-2 flex items-start justify-between">
                 <div className="flex-1">
-                  <h1 className="text-3xl font-bold text-foreground">{opportunity.title}</h1>
-                  <p className="mt-1 text-lg text-muted-foreground">{opportunity.company}</p>
+                  <h1 className="text-3xl font-bold text-foreground">
+                    {opportunity.title}
+                  </h1>
+                  <p className="mt-1 text-lg text-muted-foreground">
+                    {opportunity.company}
+                  </p>
                 </div>
+
                 <span
                   className={`rounded-full px-3 py-1 text-sm font-medium ${
                     opportunity.type === "internship"
                       ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
                       : opportunity.type === "project"
-                        ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                        : "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
+                      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                      : "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
                   }`}
                 >
                   {opportunity.type}
@@ -105,7 +124,10 @@ export default function OpportunityDetailPage({ params }: { params: Promise<{ id
 
               <div className="flex flex-wrap gap-2 mb-4">
                 {opportunity.tags.map((tag) => (
-                  <span key={tag} className="rounded-full bg-secondary px-3 py-1 text-sm text-secondary-foreground">
+                  <span
+                    key={tag}
+                    className="rounded-full bg-secondary px-3 py-1 text-sm text-secondary-foreground"
+                  >
                     {tag}
                   </span>
                 ))}
@@ -114,32 +136,59 @@ export default function OpportunityDetailPage({ params }: { params: Promise<{ id
 
             <div className="space-y-4">
               <div>
-                <h2 className="mb-2 font-semibold text-foreground">Description</h2>
-                <p className="text-muted-foreground leading-relaxed">{opportunity.description}</p>
+                <h2 className="mb-2 font-semibold text-foreground">
+                  Description
+                </h2>
+                <p className="text-muted-foreground leading-relaxed">
+                  {opportunity.description}
+                </p>
               </div>
 
               <div>
-                <h2 className="mb-2 font-semibold text-foreground">Required Skills</h2>
+                <h2 className="mb-2 font-semibold text-foreground">
+                  Required Skills
+                </h2>
                 <div className="flex flex-wrap gap-2">
                   {opportunity.skills.map((skill) => {
                     const isMatched = currentUser?.skills.some(
                       (s) =>
-                        s.toLowerCase().includes(skill.toLowerCase()) || skill.toLowerCase().includes(s.toLowerCase()),
+                        s.toLowerCase().includes(skill.toLowerCase()) ||
+                        skill.toLowerCase().includes(s.toLowerCase()),
                     )
-                    return <SkillBadge key={skill} skill={skill} variant={isMatched ? "matched" : "default"} />
+
+                    return (
+                      <SkillBadge
+                        key={skill}
+                        skill={skill}
+                        variant={isMatched ? "matched" : "default"}
+                      />
+                    )
                   })}
                 </div>
               </div>
 
               {opportunity.eligibility && (
                 <div>
-                  <h2 className="mb-2 font-semibold text-foreground">Eligibility</h2>
+                  <h2 className="mb-2 font-semibold text-foreground">
+                    Eligibility
+                  </h2>
                   <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                    {opportunity.eligibility.minCGPA && <li>Minimum CGPA: {opportunity.eligibility.minCGPA}</li>}
-                    {opportunity.eligibility.departments && (
-                      <li>Departments: {opportunity.eligibility.departments.join(", ")}</li>
+                    {opportunity.eligibility.minCGPA && (
+                      <li>
+                        Minimum CGPA: {opportunity.eligibility.minCGPA}
+                      </li>
                     )}
-                    {opportunity.eligibility.years && <li>Year: {opportunity.eligibility.years.join(", ")}</li>}
+                    {opportunity.eligibility.departments && (
+                      <li>
+                        Departments:{" "}
+                        {opportunity.eligibility.departments.join(", ")}
+                      </li>
+                    )}
+                    {opportunity.eligibility.years && (
+                      <li>
+                        Year: {opportunity.eligibility.years.join(", ")}
+                      </li>
+                    )}
                   </ul>
                 </div>
               )}
@@ -181,19 +230,36 @@ export default function OpportunityDetailPage({ params }: { params: Promise<{ id
             {currentUser && (
               <div className="mb-4 text-center">
                 <div className="mx-auto mb-2 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-                  <span className="text-2xl font-bold text-primary">{matchScore}%</span>
+                  <span className="text-2xl font-bold text-primary">
+                    {matchScore}%
+                  </span>
                 </div>
-                <p className="text-sm text-muted-foreground">Your Match Score</p>
+                <p className="text-sm text-muted-foreground">
+                  Your Match Score
+                </p>
               </div>
             )}
 
             {hasApplied ? (
               <div className="text-center py-4">
                 <CheckCircleIcon className="mx-auto h-12 w-12 text-green-600 mb-2" />
-                <p className="font-medium text-foreground">Application Submitted</p>
-                <p className="text-sm text-muted-foreground">We'll notify you of updates</p>
+                <p className="font-medium text-foreground">
+                  Application Submitted
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  We'll notify you of updates
+                </p>
               </div>
+            ) : isDeadlinePassed ? (
+              <Button
+                className="w-full"
+                size="lg"
+                variant="secondary"
+              >
+                Fill the Form
+              </Button>
             ) : (
+
                 <>
                   {/* CONDITIONAL RENDERING FOR PROJECT VS OTHER OPPORTUNITIES */}
                   { opportunity.type === "project" ? (
@@ -212,43 +278,66 @@ export default function OpportunityDetailPage({ params }: { params: Promise<{ id
                     </Button>
                   )}
                 </>
+
             )}
           </Card>
 
           {/* Details Card */}
           <Card className="glass rounded-2xl p-6">
-            <h3 className="mb-4 font-semibold text-foreground">Opportunity Details</h3>
+            <h3 className="mb-4 font-semibold text-foreground">
+              Opportunity Details
+            </h3>
+
             <div className="space-y-3 text-sm">
               {opportunity.stipend && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Stipend</span>
-                  <span className="font-medium text-foreground">{opportunity.stipend}</span>
+                  <span className="font-medium text-foreground">
+                    {opportunity.stipend}
+                  </span>
                 </div>
               )}
+
               {opportunity.duration && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Duration</span>
-                  <span className="font-medium text-foreground">{opportunity.duration}</span>
+                  <span className="font-medium text-foreground">
+                    {opportunity.duration}
+                  </span>
                 </div>
               )}
+
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Posted</span>
-                <span className="font-medium text-foreground">{formatDate(opportunity.postedDate)}</span>
+                <span className="font-medium text-foreground">
+                  {formatDate(opportunity.postedDate)}
+                </span>
               </div>
+
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Deadline</span>
-                <span className={`font-medium ${daysLeft <= 3 ? "text-red-600" : "text-foreground"}`}>
+                <span
+                  className={`font-medium ${
+                    daysLeft <= 3 ? "text-red-600" : "text-foreground"
+                  }`}
+                >
                   {formatDate(opportunity.deadline)}
                   {daysLeft > 0 && ` (${daysLeft}d left)`}
                 </span>
               </div>
+
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Applicants</span>
-                <span className="font-medium text-foreground">{opportunity.applicants || 0}</span>
+                <span className="font-medium text-foreground">
+                  {opportunity.applicants || 0}
+                </span>
               </div>
+
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Posted By</span>
-                <span className="font-medium text-foreground">{opportunity.postedBy}</span>
+                <span className="font-medium text-foreground">
+                  {opportunity.postedBy}
+                </span>
               </div>
             </div>
           </Card>

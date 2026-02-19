@@ -8,8 +8,6 @@ import { SkillBadge } from "@/components/ui/skill-badge"
 import { DomainChart } from "@/components/ui/domain-chart"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { useEffect } from "react"
-=======
 import { Switch } from "@/components/ui/switch"
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"

@@ -4,10 +4,13 @@ import { BellIcon, MagnifyingGlassIcon, UserCircleIcon } from "@heroicons/react/
 import { useAppStore } from "@/lib/store"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
+import { useUser } from "@/contexts/UserContext"
 
 export function Topbar() {
-  const { notifications, currentUser } = useAppStore()
+  const { notifications } = useAppStore()
   const unreadCount = notifications.filter((n) => !n.read).length
+  
+  const { user, loading, error } = useUser()
 
   return (
     <div className="glass sticky top-0 z-10 flex h-16 items-center justify-between border-b border-border px-6">
@@ -34,8 +37,12 @@ export function Topbar() {
 
         <div className="flex items-center gap-3 border-l border-border pl-4">
           <div className="text-right">
-            <div className="text-sm font-medium text-foreground">{currentUser?.name || "Guest User"}</div>
-            <div className="text-xs text-muted-foreground">{currentUser?.email || "guest@example.com"}</div>
+            <div className="text-sm font-medium text-foreground">
+              {loading ? "Loading..." : error ? "Guest User" : user?.username || "Guest User"}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {loading ? "..." : error ? "guest@example.com" : user?.email || "guest@example.com"}
+            </div>
           </div>
           <UserCircleIcon className="h-9 w-9 text-muted-foreground" />
         </div>

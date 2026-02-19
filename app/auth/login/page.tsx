@@ -7,7 +7,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { ApiError, loginUser, setAuthTokens } from "@/lib/auth"
+import { ApiError, loginUser } from "@/lib/auth"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -17,6 +17,7 @@ export default function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const showRegisteredMessage = searchParams.get("registered") === "1"
+  const nextPath = searchParams.get("next")
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -29,12 +30,17 @@ export default function LoginPage() {
         password,
       })
 
-      setAuthTokens({
-        access_token: response.access_token,
-        refresh_token: response.refresh_token,
-      })
+      const roleDashboardMap: Record<string, string> = {
+        student: "/dashboard/student",
+        teacher: "/dashboard/teacher",
+        tnp: "/dashboard/tnp",
+        recruiter: "/dashboard/recruiter",
+      }
 
-      router.push("/dashboard/student")
+      const rolePath = response.user.role ? roleDashboardMap[response.user.role] : undefined
+      const fallbackPath = rolePath ?? "/dashboard/student"
+      const redirectPath = nextPath && nextPath.startsWith("/") ? nextPath : fallbackPath
+      router.push(redirectPath)
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message)

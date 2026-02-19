@@ -1,16 +1,34 @@
 "use client"
 
 import { BellIcon, MagnifyingGlassIcon, UserCircleIcon } from "@heroicons/react/24/outline"
+import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { useAppStore } from "@/lib/store"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { useUser } from "@/contexts/UserContext"
+import { logoutUser } from "@/lib/auth"
 
 export function Topbar() {
+  const router = useRouter()
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
   const { notifications } = useAppStore()
   const unreadCount = notifications.filter((n) => !n.read).length
   
   const { user, loading, error } = useUser()
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true)
+
+    try {
+      await logoutUser(null)
+    } finally {
+      router.replace("/auth/login")
+      router.refresh()
+      setIsLoggingOut(false)
+    }
+  }
 
   return (
     <div className="glass sticky top-0 z-10 flex h-16 items-center justify-between border-b border-border px-6">
@@ -36,6 +54,9 @@ export function Topbar() {
         </Link>
 
         <div className="flex items-center gap-3 border-l border-border pl-4">
+          <Button variant="outline" size="sm" onClick={handleLogout} disabled={isLoggingOut}>
+            {isLoggingOut ? "Signing out..." : "Logout"}
+          </Button>
           <div className="text-right">
             <div className="text-sm font-medium text-foreground">
               {loading ? "Loading..." : error ? "Guest User" : user?.username || "Guest User"}

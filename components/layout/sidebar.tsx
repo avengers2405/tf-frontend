@@ -3,7 +3,8 @@
 import Link from "next/link"
 import { useAppStore } from "@/lib/store"
 import { cn } from "@/lib/utils"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname } from "next/navigation"
+import { useUser } from "@/contexts/UserContext"
 import {
   HomeIcon,
   BriefcaseIcon,
@@ -21,15 +22,8 @@ import {
 export function Sidebar() {
   const pathname = usePathname()
   const { currentRole } = useAppStore()
-
-  const roleDashboardMap: Record<string, string> = {
-  student: "/dashboard/student",
-  teacher: "/dashboard/teacher",
-  tnp: "/dashboard/tnp",
-  recruiter: "/dashboard/recruiter",
-}
-
-   const router = useRouter()
+  const { user } = useUser()
+  const activeRole = user?.role ?? currentRole
 
   const navigation = {
     student: [
@@ -64,7 +58,7 @@ export function Sidebar() {
     ],
   }
 
-  const links = navigation[currentRole] || navigation.student
+  const links = navigation[activeRole] || navigation.student
 
   return (
     <div className="glass-strong flex h-screen w-64 flex-col border-r border-border">
@@ -75,7 +69,7 @@ export function Sidebar() {
           </div>
           <div className="flex flex-col">
             <span className="text-sm font-bold text-foreground">Campus Portal</span>
-            <span className="text-xs text-muted-foreground capitalize">{currentRole}</span>
+            <span className="text-xs text-muted-foreground capitalize">{activeRole}</span>
           </div>
         </Link>
       </div>
@@ -101,27 +95,7 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="border-t border-border p-4">
-     <select
-  value={currentRole}
-  onChange={(e) => {
-    const role = e.target.value as
-      | "student"
-      | "teacher"
-      | "tnp"
-      | "recruiter"
-
-    useAppStore.setState({ currentRole: role })
-    router.push(`/dashboard/${role}`)
-  }}
-  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
->
-  <option value="student">Student View</option>
-  <option value="tnp">TnP View</option>
-  <option value="teacher">Teacher View</option>
-  <option value="recruiter">Recruiter View</option>
-</select>
-      </div>
+      <div className="border-t border-border p-4" />
     </div>
   )
 }

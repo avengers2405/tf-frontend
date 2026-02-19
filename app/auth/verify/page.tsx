@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { ApiError, setAuthTokens, verifyMagicLink } from "@/lib/auth"
+import { ApiError, verifyMagicLink } from "@/lib/auth"
 
 type VerifyState = "idle" | "loading" | "success" | "error"
 
@@ -37,12 +37,7 @@ export default function VerifyPage() {
       setMessage("Verifying your email...")
 
       try {
-        const response = await verifyMagicLink(token)
-
-        setAuthTokens({
-          access_token: response.access_token,
-          refresh_token: response.refresh_token,
-        })
+        await verifyMagicLink(token)
 
         setState("success")
         setMessage("Email verified successfully. Your account is ready.")

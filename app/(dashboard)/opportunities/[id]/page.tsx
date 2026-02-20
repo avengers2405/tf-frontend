@@ -123,7 +123,7 @@ export default function OpportunityDetailPage({
               </div>
 
               <div className="flex flex-wrap gap-2 mb-4">
-                {opportunity.tags.map((tag) => (
+                {opportunity.tags?.map((tag) => (
                   <span
                     key={tag}
                     className="rounded-full bg-secondary px-3 py-1 text-sm text-secondary-foreground"

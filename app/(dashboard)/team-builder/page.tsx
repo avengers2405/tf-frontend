@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,10 +11,12 @@ import {
   SparklesIcon, 
   PlusIcon, 
   XMarkIcon, 
-  CheckCircleIcon 
+  CheckCircleIcon,
+  MagnifyingGlassIcon
 } from "@heroicons/react/24/outline"
 import { toast } from "sonner"
 import { useUser } from "@/contexts/UserContext"
+import MiniSearch from 'minisearch'
 
 // Helper function to transform domains array to object format
 const transformDomains = (domainsArray: any[]) => {
@@ -49,7 +51,8 @@ export default function TeamBuilderPage() {
   const [students, setStudents] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
-  // State for the Team Details Popup
+  // State for the Search and Team Details Popup
+  const [searchQuery, setSearchQuery] = useState("")
   const [selectedTeam, setSelectedTeam] = useState<any>(null)
 
   useEffect(() => {
@@ -107,19 +110,57 @@ export default function TeamBuilderPage() {
     fetchMyTeams();
   }, [currentUser?.id]);
 
+  // --- MiniSearch Logic ---
+  const filteredCandidates = useMemo(() => {
+    // Exclude current user and ensure they have a name
+    const validStudents = students.filter(s => s.name && s.id !== currentUser?.id);
+
+    // If no search, return everyone (minus the current user)
+    if (!searchQuery.trim()) {
+      return validStudents;
+    }
+
+    const miniSearch = new MiniSearch({
+      fields: ['name', 'skills', 'department'], 
+      storeFields: ['id'], // We only need the ID to map back to the full student objects
+      searchOptions: {
+        boost: { name: 2, skills: 1.5, department: 1 }, 
+        prefix: true, 
+        fuzzy: 0.2  
+      }
+    });
+
+    miniSearch.addAll(validStudents);
+
+    // Perform Search
+    let results = miniSearch.search(searchQuery, { combineWith: 'AND' });
+
+    // Fallback to OR if no exact matches
+    if (results.length === 0) {
+       results = miniSearch.search(searchQuery, { combineWith: 'OR' });
+    }
+
+    // Map results back to full student objects
+    return results.map((result: any) => {
+      return validStudents.find(s => s.id === result.id);
+    }).filter(Boolean); // Filter out undefined just in case
+
+  }, [searchQuery, students, currentUser]);
+
   // --- Handlers ---
 
   const startCreation = () => {
     if (!currentUser) return
-     
+      
     const formattedUser = {
       ...currentUser,
       name: currentUser.name || currentUser.full_name || currentUser.username
-  }
+    }
 
     setIsCreating(true)
     setDraftMembers([formattedUser]) 
     setDraftTeamName("")
+    setSearchQuery("") // Reset search on new creation
   }
 
   const toggleMemberSelection = (student: any) => {
@@ -141,60 +182,62 @@ export default function TeamBuilderPage() {
   }
 
   const saveTeam = async () => {
-  if (!draftTeamName.trim()) {
-    toast.error("Please give your team a name.");
-    return;
-  }
-  if (draftMembers.length < 2) {
-    toast.error("A team needs at least 2 members.");
-    return;
-  }
-  if (!currentUser) {
-    toast.error("User not authenticated.");
-    return;
-  }
-
-  try {
-    const response = await fetch('http://localhost:5000/api/team-builder/create-team', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        group_name: draftTeamName,
-        // Send IDs of selected teammates (already registration_numbers from /students fetch)
-        student_ids: draftMembers
-          .filter(m => m.id !== currentUser.id) // Filter out the currentUser's user_id
-          .map(m => m.registration_number),
-        // Send the creator's user_id for backend lookup
-        creator_user_id: currentUser.id 
-      })
-    });
-
-    const data = await response.json();
-
-    if (response.ok) {
-      const newTeam = {
-        id: data.group_id, 
-        name: draftTeamName,
-        members: draftMembers,
-        createdAt: new Date(),
-      };
-
-      setMyTeams(prev => [newTeam, ...prev]);
-      setIsCreating(false);
-      setDraftMembers([]);
-      setDraftTeamName("");
-      toast.success(`Team created! ID: ${data.group_id}`);
-    } else {
-      toast.error(data.error || "Failed to create team");
+    if (!draftTeamName.trim()) {
+      toast.error("Please give your team a name.");
+      return;
     }
-  } catch (error) {
-    toast.error("Connection error. Please try again.");
+    if (draftMembers.length < 2) {
+      toast.error("A team needs at least 2 members.");
+      return;
+    }
+    if (!currentUser) {
+      toast.error("User not authenticated.");
+      return;
+    }
+
+    try {
+      const response = await fetch('http://localhost:5000/api/team-builder/create-team', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          group_name: draftTeamName,
+          // Send IDs of selected teammates (already registration_numbers from /students fetch)
+          student_ids: draftMembers
+            .filter(m => m.id !== currentUser.id) // Filter out the currentUser's user_id
+            .map(m => m.registration_number),
+          // Send the creator's user_id for backend lookup
+          creator_user_id: currentUser.id 
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        const newTeam = {
+          id: data.group_id, 
+          name: draftTeamName,
+          members: draftMembers,
+          createdAt: new Date(),
+        };
+
+        setMyTeams(prev => [newTeam, ...prev]);
+        setIsCreating(false);
+        setDraftMembers([]);
+        setDraftTeamName("");
+        setSearchQuery(""); // Clear search on save
+        toast.success(`Team created! ID: ${data.group_id}`);
+      } else {
+        toast.error(data.error || "Failed to create team");
+      }
+    } catch (error) {
+      toast.error("Connection error. Please try again.");
+    }
   }
-}
 
   const cancelCreation = () => {
     setIsCreating(false)
     setDraftMembers([])
+    setSearchQuery("") // Clear search on cancel
   }
 
   const handleRegenerateRecommendations = () => {
@@ -204,6 +247,7 @@ export default function TeamBuilderPage() {
       ...student,
       matchScore: Math.floor(Math.random() * 40) + 60
     })));
+    setSearchQuery("") // Clear search on regenerate
   }
 
   if (userLoading) {
@@ -243,48 +287,67 @@ export default function TeamBuilderPage() {
       {/* --- Active Creation Staging Area --- */}
       {isCreating && (
         <Card className="border-primary/50 bg-primary/5 rounded-2xl p-6 sticky top-4 z-10 backdrop-blur-md shadow-lg">
-          <div className="flex flex-col md:flex-row justify-between gap-4 items-end md:items-center">
-            <div className="w-full md:w-1/3">
-              <label className="text-sm font-medium mb-1 block">Team Name</label>
-              <Input 
-                placeholder="Ex: Hackathon Alpha" 
-                value={draftTeamName}
-                onChange={(e) => setDraftTeamName(e.target.value)}
-                className="bg-background/80"
-              />
-            </div>
-            
-            <div className="flex-1 flex flex-col items-center">
-              <span className="text-sm font-medium mb-2">
-                Selected Members ({draftMembers.length}/6)
-              </span>
-              <div className="flex flex-wrap justify-center gap-2">
-                {draftMembers.map(m => (
-                  <div key={m.id} className="flex items-center gap-1 bg-background rounded-full pl-1 pr-3 py-1 text-xs border shadow-sm">
-                    <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center font-bold text-[10px]">
-                      {m.name.charAt(0)}
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col md:flex-row justify-between gap-4 items-end md:items-center">
+              <div className="w-full md:w-1/3">
+                <label className="text-sm font-medium mb-1 block">Team Name</label>
+                <Input 
+                  placeholder="Ex: Hackathon Alpha" 
+                  value={draftTeamName}
+                  onChange={(e) => setDraftTeamName(e.target.value)}
+                  className="bg-background/80"
+                />
+              </div>
+              
+              <div className="flex-1 flex flex-col items-center">
+                <span className="text-sm font-medium mb-2">
+                  Selected Members ({draftMembers.length}/6)
+                </span>
+                <div className="flex flex-wrap justify-center gap-2">
+                  {draftMembers.map(m => (
+                    <div key={m.id} className="flex items-center gap-1 bg-background rounded-full pl-1 pr-3 py-1 text-xs border shadow-sm">
+                      <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center font-bold text-[10px]">
+                        {m.name.charAt(0)}
+                      </div>
+                      {m.name}
+                      {m.id !== currentUser.id && (
+                        <button onClick={() => toggleMemberSelection(m)} className="ml-1 text-muted-foreground hover:text-red-500">
+                          <XMarkIcon className="w-3 h-3" />
+                        </button>
+                      )}
                     </div>
-                    {m.name}
-                    {m.id !== currentUser.id && (
-                      <button onClick={() => toggleMemberSelection(m)} className="ml-1 text-muted-foreground hover:text-red-500">
-                        <XMarkIcon className="w-3 h-3" />
-                      </button>
-                    )}
-                  </div>
-                ))}
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <Button variant="ghost" onClick={cancelCreation}>Cancel</Button>
+                <Button onClick={saveTeam}>Save Team</Button>
               </div>
             </div>
 
-            <div className="flex gap-2">
-              <Button variant="ghost" onClick={cancelCreation}>Cancel</Button>
-              <Button onClick={saveTeam}>Save Team</Button>
+            {/* --- MiniSearch Bar --- */}
+            <div className="relative mt-2">
+               <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+               <Input 
+                 placeholder="Search candidates... (e.g. 'Rahul React')" 
+                 value={searchQuery}
+                 onChange={(e) => setSearchQuery(e.target.value)}
+                 className="pl-9 bg-background/90"
+               />
+               {searchQuery && (
+                 <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                   {filteredCandidates.length} results
+                 </div>
+               )}
             </div>
+
           </div>
         </Card>
       )}
 
       {/* --- My Teams List --- */}
-      {myTeams.length > 0 && (
+      {myTeams.length > 0 && !isCreating && (
         <section>
           <h2 className="mb-4 text-xl font-semibold text-foreground flex items-center">
             <UserGroupIcon className="mr-2 h-5 w-5" />
@@ -294,7 +357,6 @@ export default function TeamBuilderPage() {
             {myTeams.map((team) => (
               <Card 
                 key={team.id} 
-                // Added onClick to open modal and hover effects
                 onClick={() => setSelectedTeam(team)}
                 className="glass rounded-2xl p-5 border-l-4 border-l-primary shadow-sm hover:shadow-md cursor-pointer transition-all hover:scale-[1.02]"
               >
@@ -328,8 +390,15 @@ export default function TeamBuilderPage() {
 
       {/* --- Recommendations Grid --- */}
       <div>
-        <h2 className="mb-4 text-xl font-semibold text-foreground">
-          {isCreating ? "Select Teammates" : "Recommended Teammates"}
+        <h2 className="mb-4 text-xl font-semibold text-foreground flex items-center gap-2">
+          {searchQuery ? (
+             <>
+               <MagnifyingGlassIcon className="h-5 w-5" />
+               Search Results
+             </>
+          ) : (
+             isCreating ? "Select Teammates" : "Recommended Teammates"
+          )}
         </h2>
         
         {isLoading ? (
@@ -342,9 +411,14 @@ export default function TeamBuilderPage() {
               </Card>
             ))}
           </div>
+        ) : filteredCandidates.length === 0 ? (
+           <div className="text-center py-12 text-muted-foreground">
+             <p>No students found matching "{searchQuery}"</p>
+             <Button variant="link" onClick={() => setSearchQuery("")} className="mt-2">Clear Search</Button>
+           </div>
         ) : (
           <div className="grid gap-6 md:grid-cols-2">
-            {students.filter(student => student.name).map((student) => {
+            {filteredCandidates.map((student: any) => {
               if (!student) return null
 
               const isSelected = draftMembers.some(m => m.id === student.id)
@@ -375,13 +449,20 @@ export default function TeamBuilderPage() {
                     <h4 className="mb-2 text-sm font-medium text-foreground">Skills</h4>
                     <div className="flex flex-wrap gap-1">
                       {student.skills && student.skills.length > 0 ? (
-                        student.skills.slice(0, 6).map((skill: string, index: number) => (
-                          <SkillBadge 
-                            key={`${skill}-${index}`} 
-                            skill={skill} 
-                            variant={currentUser?.skills?.includes(skill) ? "default" : "matched"} 
-                          />
-                        ))
+                        student.skills.slice(0, 6).map((skill: string, index: number) => {
+                          // Search Match Logic
+                          const isSearchMatch = searchQuery && searchQuery.toLowerCase().split(/\s+/).some(t => t.length > 1 && skill.toLowerCase().includes(t));
+                          const isComplementary = !currentUser?.skills?.includes(skill);
+
+                          return (
+                            <SkillBadge 
+                              key={`${skill}-${index}`} 
+                              skill={skill} 
+                              variant={isSearchMatch ? "matched" : (isComplementary ? "default" : "secondary")} 
+                              className={isSearchMatch ? "ring-2 ring-primary bg-primary/20 font-bold" : ""}
+                            />
+                          );
+                        })
                       ) : (
                         <span className="text-sm text-muted-foreground">No skills listed</span>
                       )}
@@ -462,7 +543,6 @@ export default function TeamBuilderPage() {
                     </div>
                     <div>
                       <p className="font-medium text-foreground">{member.name}</p>
-                      {/* You can add department or role here if available in member object */}
                       <p className="text-xs text-muted-foreground">Member</p>
                       <p className="text-xs text-muted-foreground">
                         {member.department || "No Department listed"}
@@ -471,12 +551,6 @@ export default function TeamBuilderPage() {
                   </div>
                 ))}
               </div>
-              
-              {/* <div className="mt-6 pt-4 border-t flex justify-end">
-                <Button variant="outline" onClick={() => setSelectedTeam(null)}>
-                  Close
-                </Button>
-              </div> */}
             </div>
           </Card>
         </div>

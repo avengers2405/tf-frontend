@@ -47,7 +47,8 @@ export default function LogsPage() {
       const startParam = initialDateTime.toISOString()
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/logs?start=${startParam}&offset=${offset}`
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/logs?start=${startParam}&offset=${offset}`,
+        { credentials: "include" }
       )
 
       const data: LogsResponse = await response.json()

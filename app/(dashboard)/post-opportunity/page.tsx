@@ -152,6 +152,7 @@ export default function PostOpportunityPage() {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include",
         body: JSON.stringify({
           company_name: formData.company,
           min_cgpa: minCgpaForBackend,

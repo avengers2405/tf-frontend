@@ -49,7 +49,7 @@ export default function EmailActionPage() {
         const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5000"
         const response = await fetch(
           `${apiBaseUrl}/drives/confirm-interest?token=${encodeURIComponent(token)}`,
-          { method: "GET" },
+          { method: "GET", credentials: "include" },
         )
 
         const payload = (await response.json().catch(() => null)) as ConfirmResponse | null

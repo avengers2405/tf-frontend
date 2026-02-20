@@ -202,6 +202,7 @@ const prioritizedMissingSkills = skillImportance
     setIsUploading(true)
     const formData = new FormData()
     formData.append("resume", file)
+    formData.append("userid", currentUser?.id || "")
 
     try {
 

@@ -732,9 +732,9 @@ export default function StudentDashboard() {
   }, [])
 
   const resumeSkillList = extractedSkills
-  ? normalizeSkillList(extractedSkills.map((s: any) => s.skill))
-  : []
-  // State for chart
+    ? normalizeSkillList(extractedSkills.map((s: any) => s.skill))
+    : []
+  // State for chart (THIS WAS CORRECT)
   const [dynamicDomains, setDynamicDomains] =
     useState<DomainData>(normalizedDomains)
 
@@ -745,10 +745,12 @@ export default function StudentDashboard() {
       try {
         setLoadingResumes(true)
         const anonymizedParam = showAnonymizedResumes ? '?anonymized=true' : ''
-        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/resume/list${anonymizedParam}`)
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/resume/list${anonymizedParam}`, {
+          credentials: "include"
+        })
         if (response.ok) {
           const data = await response.json()
-          setResumes(data.resumes || [])
+          setResumes(data.documents || [])
         }
       } catch (error) {
         console.error("Failed to fetch resumes list:", error)
@@ -770,7 +772,8 @@ export default function StudentDashboard() {
       try {
         const anonymizedParam = showAnonymizedResumes ? '?anonymized=true' : ''
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/resume/download/${resumeId}${anonymizedParam}`
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/resume/download/${resumeId}${anonymizedParam}`,
+          { credentials: "include" }
         )
         if (response.ok) {
           const blob = await response.blob()
@@ -785,7 +788,7 @@ export default function StudentDashboard() {
     // Fetch all PDFs once we have the list
     resumes.forEach((resume) => {
       if (resume.id && !pdfUrls[resume.id]) {
-        fetchPDFFile(resume.id, resume.filename)
+        fetchPDFFile(resume.id, resume.name)
       }
     })
 
@@ -808,24 +811,24 @@ export default function StudentDashboard() {
     .slice(0, 3)
 
   // 🔥 Global skill-gap summary across ALL opportunities
-  const skillImportance = calculateSkillImportance(opportunities)
+    const skillImportance = calculateSkillImportance(opportunities)
 
-  const allOpportunitySkills = opportunities.flatMap((o) => o.skills)
+    const allOpportunitySkills = opportunities.flatMap((o) => o.skills)
 
-  // Matched vs missing across entire opportunity pool
-  const { missing: globalMissingSkills } = analyzeSkillGap(
-    resumeSkillList,
-    allOpportunitySkills
-  )
-
-  // Rank missing skills by importance
-  const prioritizedMissingSkills = skillImportance
-    .filter((s) =>
-      globalMissingSkills.some(
-        (m) => m.toLowerCase() === s.skill
-      )
+    // Matched vs missing across entire opportunity pool
+    const { missing: globalMissingSkills } = analyzeSkillGap(
+      resumeSkillList,
+      allOpportunitySkills
     )
-    .slice(0, 8) // show top 8 only
+
+    // Rank missing skills by importance
+    const prioritizedMissingSkills = skillImportance
+      .filter((s) =>
+        globalMissingSkills.some(
+          (m) => m.toLowerCase() === s.skill
+        )
+      )
+      .slice(0, 8) // show top 8 only
 
   const allRequiredSkills = new Set(opportunities.flatMap((o) => o.skills))
   const missingSkills = Array.from(allRequiredSkills)
@@ -849,17 +852,19 @@ export default function StudentDashboard() {
 
     try {
 
-    
-    const response = await fetch("http://localhost:5000/resumeParser/parse-resume", {
-      method: "POST",
-      body: formData,
-    })
+
+      const response = await fetch("http://localhost:5000/resumeParser/parse-resume", {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      })
 
       console.log("Going for: ", `${process.env.NEXT_PUBLIC_BACKEND_URL}/resume/upload`)
-//      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/resume/upload`, {
-//        method: "POST",
-//        body: formData,
-//      })
+      const uploadResponse = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/resume/upload`, {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      })
 
 
       if (!response.ok) throw new Error("Connection to backend failed")
@@ -870,9 +875,9 @@ export default function StudentDashboard() {
         // 1. Update list of badges
         setExtractedSkills(data.skills)
         localStorage.setItem(
-        "parsedSkills",
-        JSON.stringify(data.skills)
-      )
+          "parsedSkills",
+          JSON.stringify(data.skills)
+        )
         // 2. Update Domain Chart (Mapping backend categories to UI bars)
         const newChart: DomainData = {
           web: 0,
@@ -1092,8 +1097,8 @@ export default function StudentDashboard() {
           </h2>
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Anonymized</span>
-            <Switch 
-              checked={showAnonymizedResumes} 
+            <Switch
+              checked={showAnonymizedResumes}
               onCheckedChange={setShowAnonymizedResumes}
             />
           </div>
@@ -1135,16 +1140,16 @@ export default function StudentDashboard() {
                             <iframe
                               src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
                               className="absolute inset-0 pointer-events-none border-0"
-                              style={{ 
+                              style={{
                                 width: 'calc(100% + 20px)',
                                 height: 'calc(100% + 20px)',
                                 overflow: 'hidden'
                               }}
-                              title={`Preview of ${resume.filename}`}
+                              title={`Preview of ${resume.name}`}
                             />
                           </div>
                           <button
-                            onClick={(e) => handleDownloadResume(e, pdfUrl, resume.filename)}
+                            onClick={(e) => handleDownloadResume(e, pdfUrl, resume.name)}
                             className="absolute top-2 right-2 p-2 rounded-lg bg-primary/90 text-primary-foreground opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-primary z-10"
                             title="Download resume"
                           >
@@ -1154,11 +1159,11 @@ export default function StudentDashboard() {
                       )}
                     </div>
                     <div className="p-3">
-                      <p className="text-sm font-medium text-foreground truncate" title={resume.filename || `Resume ${index + 1}`}>
-                        {resume.filename || `Resume ${index + 1}`}
+                      <p className="text-sm font-medium text-foreground truncate" title={resume.name || `Resume ${index + 1}`}>
+                        {resume.name || `Resume ${index + 1}`}
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        {resume.uploadDate ? new Date(resume.uploadDate).toLocaleDateString() : 'PDF Document'}
+                        {resume.created_at ? new Date(resume.created_at).toLocaleDateString() : 'PDF Document'}
                       </p>
                     </div>
                   </div>

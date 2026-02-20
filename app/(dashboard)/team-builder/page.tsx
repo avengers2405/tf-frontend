@@ -58,7 +58,9 @@ export default function TeamBuilderPage() {
   useEffect(() => {
     const fetchStudents = async () => {
       try {
-        const response = await fetch("http://localhost:5000/api/students");
+        const response = await fetch("http://localhost:5000/api/students", {
+          credentials: "include"
+        });
         const data = await response.json();
         console.log("Fetched students:", data);
         if (response.ok) {
@@ -89,7 +91,9 @@ export default function TeamBuilderPage() {
 
       try {
         setIsLoading(true);
-        const response = await fetch(`http://localhost:5000/api/team-builder/get-my-teams/${currentUser.id}`);
+        const response = await fetch(`http://localhost:5000/api/team-builder/get-my-teams/${currentUser.id}`, {
+          credentials: "include"
+        });
         
         if (response.ok) {
           const data = await response.json();
@@ -195,20 +199,21 @@ export default function TeamBuilderPage() {
       return;
     }
 
-    try {
-      const response = await fetch('http://localhost:5000/api/team-builder/create-team', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          group_name: draftTeamName,
-          // Send IDs of selected teammates (already registration_numbers from /students fetch)
-          student_ids: draftMembers
-            .filter(m => m.id !== currentUser.id) // Filter out the currentUser's user_id
-            .map(m => m.registration_number),
-          // Send the creator's user_id for backend lookup
-          creator_user_id: currentUser.id 
-        })
-      });
+  try {
+    const response = await fetch('http://localhost:5000/api/team-builder/create-team', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: "include",
+      body: JSON.stringify({
+        group_name: draftTeamName,
+        // Send IDs of selected teammates (already registration_numbers from /students fetch)
+        student_ids: draftMembers
+          .filter(m => m.id !== currentUser.id) // Filter out the currentUser's user_id
+          .map(m => m.registration_number),
+        // Send the creator's user_id for backend lookup
+        creator_user_id: currentUser.id 
+      })
+    });
 
       const data = await response.json();
 

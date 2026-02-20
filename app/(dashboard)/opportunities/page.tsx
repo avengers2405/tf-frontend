@@ -795,7 +795,7 @@
 
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useAppStore } from "@/lib/store"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -809,9 +809,12 @@ import Link from "next/link"
 import { getDaysUntil } from "@/lib/utils"
 import { analyzeOpportunity, generateUserIdeal, UserPreferences } from "@/lib/vibe-logic"
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Legend } from 'recharts'
+
+
 import { useUser } from "@/contexts/UserContext"
 
 export default function OpportunitiesPage() {
+  const { user: currentUser, loading: userLoading } = useUser()
   const { opportunities } = useAppStore()
   const [search, setSearch] = useState("")
   const [typeFilter, setTypeFilter] = useState<string>("all")
@@ -831,6 +834,60 @@ export default function OpportunitiesPage() {
   const [selectedOpp, setSelectedOpp] = useState<any>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [analyzing, setAnalyzing] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [projectOpportunities, setProjectOpportunities] = useState<any[]>([])
+
+  console.log("Current User:", currentUser)
+  useEffect(() => {
+    const fetchTeacherProjects = async () => {
+      setLoading(true)
+      try {
+        console.log("fetching projects");
+        const response = await fetch(`http://localhost:5000/post-opportunity/getProjectOpportunitiesById/${currentUser?.id}`)
+        const result = await response.json()
+        
+        if (result.success) {
+          // Map backend 'Project' schema to match your frontend 'Opportunity' interface
+          const mappedData = result.data.map((proj: any) => ({
+            id: proj.project_id.toString(),
+            title: proj.title,
+            company: "Academic Project", // Projects are internal
+            type: "project",
+            description: proj.description,
+            skills: proj.technology_stack.split(',').map((s: string) => s.trim()),
+            postedDate: new Date().toISOString(), // Default for UI sorting
+            deadline: new Date(new Date().setMonth(new Date().getMonth() + 3)).toISOString(), // Placeholder deadline
+            stipend: "Academic Credit",
+            duration: proj.academic_year,
+            applicants: proj._count?.groups || 0
+          }))
+          setProjectOpportunities(mappedData)
+          const existingOpps = useAppStore.getState().opportunities;
+          const merged = [...existingOpps, ...mappedData];
+          const uniqueOpps = Array.from(new Map(merged.map(item => [item.id, item])).values());
+          useAppStore.setState({ opportunities: uniqueOpps });
+        }
+      } catch (error) {
+        console.error("Error fetching projects:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    if (currentUser?.id) {
+      fetchTeacherProjects()
+    }
+  }, [currentUser?.id])
+
+  // ... (Keep search, filter, and vibe check logic as is, using the local 'opportunities' state)
+
+  if (loading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    )
+  }
 
   // --- CHART DATA GENERATOR ---
   const getChartData = () => {
@@ -856,12 +913,16 @@ export default function OpportunitiesPage() {
     setTimeout(() => setAnalyzing(false), 1200)
   }
 
+
   // --- BULLETPROOF SEARCH AND FILTER LOGIC ---
   // 1. Ensure opportunities is always an array (prevents crash on load)
   const safeOpportunities = Array.isArray(opportunities) ? opportunities : []
 
-  const filteredOpportunities = safeOpportunities
-    .filter((opp) => {
+//   const filteredOpportunities = safeOpportunities
+
+  const combinedOpportunities = [...opportunities, ...projectOpportunities];
+
+  const filteredOpportunities = combinedOpportunities.filter((opp) => {
       if (!opp) return false
 
       // 2. Search Matching (Safe & Case-insensitive)
@@ -996,7 +1057,7 @@ export default function OpportunitiesPage() {
 
           return (
             <Card
-              key={opp.id}
+              key={opp.id || opp.project_id.toString()}
               className="glass group flex flex-col rounded-2xl p-5 transition-all hover:shadow-xl hover:border-primary/40"
             >
               <div className="mb-4">
@@ -1063,7 +1124,7 @@ export default function OpportunitiesPage() {
                 )}
                 
                 <Button asChild className="w-full shadow-sm" variant="outline" size="sm">
-                  <Link href={`/opportunities/${opp.id}`}>Details</Link>
+                  <Link href={`/opportunities/${opp.id || opp.project_id.toString()}`}>Details</Link>
                 </Button>
               </div>
             </Card>

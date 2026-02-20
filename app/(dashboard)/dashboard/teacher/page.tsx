@@ -8,12 +8,18 @@ import { SkillBadge } from "@/components/ui/skill-badge"
 import Link from "next/link"
 import { BriefcaseIcon, UserGroupIcon, AcademicCapIcon } from "@heroicons/react/24/outline"
 import { calculateMatchScore } from "@/lib/mock-data"
+import { useEffect, useState } from "react"
+import { useUser } from "@/contexts/UserContext"
 
 export default function TeacherDashboard() {
   const { opportunities, students } = useAppStore()
-
-  const myOpportunities = opportunities.filter((o) => o.postedBy.includes("Prof") || o.postedBy.includes("Dr"))
-  const projectOpportunities = opportunities.filter((o) => o.type === "project")
+  const { user: currentUser } = useUser() 
+  const [loading, setLoading] = useState(false)
+  const [projectOpportunities, setProjectOpportunities] = useState<any[]>([])
+  const myOpportunities = [
+    ...opportunities.filter((o) => o.postedBy?.includes("Prof") || o.postedBy?.includes("Dr")),
+    ...projectOpportunities
+  ]
 
   // Mock: Latest posted opportunity for matching
   const latestOpportunity = myOpportunities[0] || opportunities[1]
@@ -25,6 +31,49 @@ export default function TeacherDashboard() {
       matchScore: latestOpportunity ? calculateMatchScore(student.skills, latestOpportunity.skills) : 0,
     }))
     .sort((a, b) => b.matchScore - a.matchScore)
+
+
+  useEffect(() => {
+      const fetchTeacherProjects = async () => {
+        setLoading(true)
+        try {
+          console.log("fetching projects");
+          const response = await fetch(`http://localhost:5000/post-opportunity/getProjectOpportunitiesById/${currentUser?.id}`)
+          const result = await response.json()
+          
+          if (result.success) {
+            // Map backend 'Project' schema to match your frontend 'Opportunity' interface
+            const mappedData = result.data.map((proj: any) => ({
+              id: proj.project_id.toString(),
+              title: proj.title,
+              company: "Academic Project", // Projects are internal
+              type: "project",
+              description: proj.description,
+              skills: proj.technology_stack.split(',').map((s: string) => s.trim()),
+              postedDate: new Date().toISOString(), // Default for UI sorting
+              deadline: new Date(new Date().setMonth(new Date().getMonth() + 3)).toISOString(), // Placeholder deadline
+              stipend: "Academic Credit",
+              duration: proj.academic_year,
+              applicants: proj._count?.groups || 0
+            }))
+            setProjectOpportunities(mappedData)
+            const existingOpps = useAppStore.getState().opportunities;
+            const merged = [...existingOpps, ...mappedData];
+            const uniqueOpps = Array.from(new Map(merged.map(item => [item.id, item])).values());
+            useAppStore.setState({ opportunities: uniqueOpps });
+          }
+        } catch (error) {
+          console.error("Error fetching projects:", error)
+        } finally {
+          setLoading(false)
+        }
+      }
+  
+      if (currentUser?.id) {
+        fetchTeacherProjects()
+      }
+    }, [currentUser?.id])
+  
 
   return (
     <div className="space-y-6">

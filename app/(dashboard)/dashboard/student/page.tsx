@@ -167,6 +167,7 @@ export default function StudentDashboard() {
     setIsUploading(true)
     const formData = new FormData()
     formData.append("resume", file)
+    formData.append("userid", currentUser?.id || "")
 
     try {
       console.log("Going for: ", `${process.env.NEXT_PUBLIC_BACKEND_URL}/resume/upload`)

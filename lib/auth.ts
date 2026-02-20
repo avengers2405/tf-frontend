@@ -5,6 +5,7 @@ export interface AuthUser {
   username: string
   email: string
   is_verified: boolean
+  role?: "student" | "teacher" | "tnp" | "recruiter"
 }
 
 export interface TokenPair {
@@ -43,8 +44,6 @@ interface MeResponse {
 
 const ACCESS_TOKEN_KEY = "auth_access_token"
 const REFRESH_TOKEN_KEY = "auth_refresh_token"
-
-let inMemoryAccessToken: string | null = null
 
 export class ApiError extends Error {
   status: number
@@ -90,24 +89,11 @@ async function parseApiError(response: Response): Promise<ApiError> {
   return new ApiError(message, response.status)
 }
 
-function saveTokens(tokens: TokenPair) {
-  inMemoryAccessToken = tokens.access_token
-
-  if (!isBrowser()) {
-    return
-  }
-
-  window.localStorage.setItem(ACCESS_TOKEN_KEY, tokens.access_token)
-  window.localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refresh_token)
-}
-
-export function setAuthTokens(tokens: TokenPair) {
-  saveTokens(tokens)
+export function setAuthTokens(_tokens: TokenPair) {
+  return
 }
 
 export function clearAuthTokens() {
-  inMemoryAccessToken = null
-
   if (!isBrowser()) {
     return
   }
@@ -117,29 +103,18 @@ export function clearAuthTokens() {
 }
 
 export function getAccessToken() {
-  if (inMemoryAccessToken) {
-    return inMemoryAccessToken
-  }
-
-  if (!isBrowser()) {
-    return null
-  }
-
-  const token = window.localStorage.getItem(ACCESS_TOKEN_KEY)
-  inMemoryAccessToken = token
-  return token
+  return null
 }
 
 export function getRefreshToken() {
-  if (!isBrowser()) {
-    return null
-  }
-
-  return window.localStorage.getItem(REFRESH_TOKEN_KEY)
+  return null
 }
 
 async function request<T>(path: string, init: RequestInit): Promise<T> {
-  const response = await fetch(`${apiBaseUrl()}${path}`, init)
+  const response = await fetch(`${apiBaseUrl()}${path}`, {
+    ...init,
+    credentials: "include",
+  })
 
   if (!response.ok) {
     throw await parseApiError(response)
@@ -196,21 +171,15 @@ export async function refreshToken(refreshTokenValue: string) {
     body: JSON.stringify({ refresh_token: refreshTokenValue }),
   })
 
-  saveTokens(refreshed)
   return refreshed
 }
 
-export async function logoutUser(refreshTokenValue: string | null) {
-  if (!refreshTokenValue) {
-    clearAuthTokens()
-    return
-  }
-
+export async function logoutUser(_refreshTokenValue: string | null) {
   try {
     await request<{ message: string }>("/auth/logout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refresh_token: refreshTokenValue }),
+      body: JSON.stringify({}),
     })
   } finally {
     clearAuthTokens()
@@ -218,33 +187,34 @@ export async function logoutUser(refreshTokenValue: string | null) {
 }
 
 export async function authFetch(path: string, init: RequestInit = {}) {
-  const makeRequest = async (accessToken: string | null) => {
-    const headers = new Headers(init.headers)
-    if (accessToken) {
-      headers.set("Authorization", `Bearer ${accessToken}`)
-    }
-
-    return fetch(`${apiBaseUrl()}${path}`, {
+  const makeRequest = async () =>
+    fetch(`${apiBaseUrl()}${path}`, {
       ...init,
-      headers,
+      credentials: "include",
     })
-  }
 
-  const response = await makeRequest(getAccessToken())
+  const response = await makeRequest()
 
   if (response.status !== 401 || path === "/auth/refresh") {
     return response
   }
 
-  const refreshTokenValue = getRefreshToken()
-  if (!refreshTokenValue) {
-    clearAuthTokens()
-    return response
-  }
-
   try {
-    const refreshed = await refreshToken(refreshTokenValue)
-    return await makeRequest(refreshed.access_token)
+    const refreshResponse = await fetch(`${apiBaseUrl()}/auth/refresh`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({}),
+      credentials: "include",
+    })
+
+    if (!refreshResponse.ok) {
+      clearAuthTokens()
+      return response
+    }
+
+    return await makeRequest()
   } catch {
     clearAuthTokens()
     return response

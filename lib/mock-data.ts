@@ -617,15 +617,15 @@ export const mockNotifications: Notification[] = [
 
 // Utility function to calculate match score between skills
 export function calculateMatchScore(studentSkills: string[], requiredSkills: string[]): number {
-  if (requiredSkills.length === 0) return 0
+  if (requiredSkills?.length === 0) return 0
 
   const matchedSkills = studentSkills.filter((skill) =>
-    requiredSkills.some(
+    requiredSkills?.some(
       (req) => skill.toLowerCase().includes(req.toLowerCase()) || req.toLowerCase().includes(skill.toLowerCase()),
     ),
   )
 
-  const baseScore = (matchedSkills.length / requiredSkills.length) * 100
+  const baseScore = (matchedSkills.length / requiredSkills?.length) * 100
   const bonusScore = Math.min((studentSkills.length - matchedSkills.length) * 2, 20)
 
   return Math.min(Math.round(baseScore + bonusScore), 100)

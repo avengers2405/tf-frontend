@@ -12,13 +12,15 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { PlusIcon, XMarkIcon, DocumentArrowUpIcon, DocumentTextIcon } from "@heroicons/react/24/outline"
 import { extractTextFromFile, analyzeSkills } from "@/lib/documentParser" // Import our utility
+import { useUser } from "@/contexts/UserContext"
 
 export default function PostOpportunityPage() {
   const router = useRouter()
   const { addOpportunity } = useAppStore()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5000"
-
+  const { user } = useUser()
+  const userId = user?.id;
   const [isParsing, setIsParsing] = useState(false)
   const [fileName, setFileName] = useState("")
 
@@ -111,15 +113,56 @@ export default function PostOpportunityPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    const resolvedDeadline = formData.deadline || 
+    new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
-    const resolvedDeadline =
-      formData.deadline ||
-      new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-        .toISOString()
-        .split("T")[0]
+    if(formData.type === "project") {
+      const payload = {
+        title: formData.title,
+        company: formData.company,
+        type: formData.type,
+        description: formData.description,
+        skills: skills, // String array
+        min_cgpa: formData.minCGPA,
+        registration_deadline: resolvedDeadline,
+        userid: userId 
+      };
 
-    const parsedMinCgpa = Number.parseFloat(formData.minCGPA)
-    const minCgpaForBackend = Number.isFinite(parsedMinCgpa) ? parsedMinCgpa : 0
+      try {
+        const response = await fetch(`http://localhost:5000/post-opportunity/opportunities`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        if (response.ok) {
+          useAppStore.getState().addNotification({
+            id: `notif-${Date.now()}`, 
+            title: "Success",
+            message: formData.type === 'project' 
+            ? "Project posted and mapped to Academic Projects." 
+            : "Opportunity posted to Company Drives.",
+            type: "success",
+            read: false,       
+            timestamp: new Date().toISOString(), 
+          });
+          router.push("/opportunities");
+        } else {
+          throw new Error("Backend rejection");
+        }
+      } catch (error) {
+        console.error("Submission error:", error);
+        useAppStore.getState().addNotification({
+          id: `ERR${Date.now()}`,
+          title: "Submission Failed",
+          message: "Failed to submit opportunity.",
+          type: "error",
+          read: false,
+          timestamp: new Date().toISOString(),
+        })
+      }
+  }else {
 
     const newOpportunity = {
       id: `OP${Date.now()}`,
@@ -143,9 +186,10 @@ export default function PostOpportunityPage() {
     }
 
     addOpportunity(newOpportunity)
-
+  }
     let backendSyncSuccessful = false
-
+    const parsedMinCgpa = Number.parseFloat(formData.minCGPA)
+    const minCgpaForBackend = Number.isFinite(parsedMinCgpa) ? parsedMinCgpa : 0
     try {
       const response = await fetch(`${apiBaseUrl}/drives`, {
         method: "POST",

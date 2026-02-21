@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { ApiError, registerUser } from "@/lib/auth"
+import { Mail, Lock, User } from "lucide-react"
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -42,75 +43,145 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-6">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Create your account</CardTitle>
-          <CardDescription>Register and verify your email before logging in.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <label htmlFor="username" className="text-sm font-medium">
-                Username
-              </label>
-              <Input
-                id="username"
-                value={username}
-                onChange={(event) => setUsername(event.target.value)}
-                placeholder="john_doe"
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label htmlFor="email" className="text-sm font-medium">
-                Email
-              </label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="john@example.com"
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label htmlFor="password" className="text-sm font-medium">
-                Password
-              </label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="StrongPassword123!"
-                required
-              />
-            </div>
-
-            {error ? (
-              <Alert variant="destructive">
-                <AlertTitle>Registration failed</AlertTitle>
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            ) : null}
-
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting ? "Creating account..." : "Register"}
-            </Button>
-          </form>
-
-          <p className="mt-4 text-sm text-muted-foreground">
-            Already have an account?{" "}
-            <Link href="/auth/login" className="text-primary underline-offset-4 hover:underline">
-              Login
-            </Link>
+    <div className="min-h-screen bg-gradient-to-br from-[#e8f0fe] via-[#f4f7fb] to-[#e8f0fe] flex justify-center">
+      <div className="w-full max-w-7xl grid lg:grid-cols-2 min-h-screen">
+        
+        {/* Left Section - Hero Area */}
+        <div className="hidden lg:flex flex-col justify-center p-12 xl:p-24 relative">
+          <div className="flex items-center gap-3 mb-12">
+            {/* Custom CSS Logo Shape */}
+            <div className="w-0 h-0 border-l-[12px] border-l-transparent border-r-[12px] border-r-transparent border-b-[18px] border-b-blue-600 transform -rotate-90"></div>
+            <span className="text-2xl font-bold tracking-widest text-[#1e3a8a]">KATANA</span>
+          </div>
+          
+          <div className="mb-6">
+            <span className="bg-blue-200/50 text-blue-700 px-4 py-1.5 rounded-full text-[10px] font-bold tracking-widest uppercase">
+              <span className="text-blue-600 mr-2">•</span> UNIFIED CAMPUS PORTAL
+            </span>
+          </div>
+          
+          <h1 className="text-[4rem] font-extrabold text-[#1a202c] leading-[1.1] mb-6 tracking-tight">
+            Your career <br /> starts <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-500">here.</span>
+          </h1>
+          
+          <p className="text-slate-500 text-base mb-14 max-w-md leading-relaxed">
+            Katana connects students, faculty, and recruiters on a single platform — streamlining internship discovery, project collaboration, and placement tracking.
           </p>
-        </CardContent>
-      </Card>
+          
+          <div className="bg-white/80 backdrop-blur-sm p-6 rounded-2xl shadow-xl shadow-blue-900/5 flex gap-8 w-fit border border-white">
+            <div className="text-center px-2">
+              <div className="text-2xl font-bold text-[#1e3a8a]">2.4k+</div>
+              <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Students</div>
+            </div>
+            <div className="w-px bg-slate-200"></div>
+            <div className="text-center px-2">
+              <div className="text-2xl font-bold text-[#1e3a8a]">180+</div>
+              <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Companies</div>
+            </div>
+            <div className="w-px bg-slate-200"></div>
+            <div className="text-center px-2">
+              <div className="text-2xl font-bold text-[#1e3a8a]">94%</div>
+              <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Placement</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Section - Register Form */}
+        <div className="flex items-center justify-center p-6 w-full">
+          <Card className="w-full max-w-[460px] border-0 shadow-2xl shadow-blue-900/10 rounded-[2rem] p-4 sm:p-8 bg-white/95 backdrop-blur-sm">
+            <CardHeader className="px-0 pt-0 pb-8">
+              <CardTitle className="text-3xl font-bold text-slate-900 tracking-tight">Create account</CardTitle>
+              <CardDescription className="text-slate-500 text-sm mt-2">
+                Register and verify your email before logging in.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="px-0 pb-0">
+              <form onSubmit={handleSubmit} className="space-y-5">
+                
+                <div className="space-y-2">
+                  <label htmlFor="username" className="text-[10px] font-bold text-slate-400 tracking-widest uppercase block">
+                    Username
+                  </label>
+                  <div className="relative">
+                    <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <Input
+                      id="username"
+                      value={username}
+                      onChange={(event) => setUsername(event.target.value)}
+                      placeholder="john_doe"
+                      required
+                      className="pl-10 bg-slate-50/50 border-slate-200 h-12 rounded-xl text-sm focus-visible:ring-blue-600"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="email" className="text-[10px] font-bold text-slate-400 tracking-widest uppercase block">
+                    Email
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <Input
+                      id="email"
+                      type="email"
+                      value={email}
+                      onChange={(event) => setEmail(event.target.value)}
+                      placeholder="john@example.com"
+                      required
+                      className="pl-10 bg-slate-50/50 border-slate-200 h-12 rounded-xl text-sm focus-visible:ring-blue-600"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2 pb-2">
+                  <label htmlFor="password" className="text-[10px] font-bold text-slate-400 tracking-widest uppercase block">
+                    Password
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <Input
+                      id="password"
+                      type="password"
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      placeholder="StrongPassword123!"
+                      required
+                      className="pl-10 bg-slate-50/50 border-slate-200 h-12 rounded-xl text-sm focus-visible:ring-blue-600"
+                    />
+                  </div>
+                </div>
+
+                {error ? (
+                  <Alert variant="destructive" className="rounded-xl">
+                    <AlertTitle>Registration failed</AlertTitle>
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                ) : null}
+
+                <Button 
+                  type="submit" 
+                  className="w-full h-12 text-sm font-semibold bg-[#2e5bb3] hover:bg-blue-800 text-white rounded-xl shadow-md transition-all" 
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? "Creating account..." : "REGISTER →"}
+                </Button>
+              </form>
+
+              <div className="mt-10 pt-6 border-t border-slate-100 text-center relative">
+                <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-white px-4 text-[10px] font-bold text-slate-300 tracking-widest uppercase">
+                  Already a member?
+                </span>
+                <p className="text-sm text-slate-500 mt-2">
+                  Have an account?{" "}
+                  <Link href="/auth/login" className="text-blue-600 font-semibold hover:underline">
+                    Sign in here
+                  </Link>
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   )
 }

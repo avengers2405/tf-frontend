@@ -843,7 +843,7 @@ export default function OpportunitiesPage() {
       setLoading(true)
       try {
         console.log("fetching projects");
-        const response = await fetch(`http://localhost:5000/post-opportunity/getProjectOpportunitiesById/${currentUser?.id}`)
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/post-opportunity/getProjectOpportunitiesById/${currentUser?.id}`)
         const result = await response.json()
         
         if (result.success) {

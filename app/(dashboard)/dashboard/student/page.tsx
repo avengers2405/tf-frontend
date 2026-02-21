@@ -853,7 +853,7 @@ export default function StudentDashboard() {
     try {
 
 
-      const response = await fetch("http://localhost:5000/resumeParser/parse-resume", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/resumeParser/parse-resume`, {
         method: "POST",
         credentials: "include",
         body: formData,

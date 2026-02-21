@@ -18,7 +18,7 @@ export default function PostOpportunityPage() {
   const router = useRouter()
   const { addOpportunity } = useAppStore()
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5000"
+  const apiBaseUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:5000"
   const { user } = useUser()
   const userId = user?.id;
   const [isParsing, setIsParsing] = useState(false)
@@ -130,7 +130,7 @@ export default function PostOpportunityPage() {
       };
 
       try {
-        const response = await fetch(`http://localhost:5000/post-opportunity/opportunities`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/post-opportunity/opportunities`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),

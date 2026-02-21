@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, Suspense } from "react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -18,7 +18,7 @@ interface ConfirmResponse {
   already_confirmed?: boolean
 }
 
-export default function EmailActionPage() {
+function EmailActionContent() {
   const searchParams = useSearchParams()
   const hasStarted = useRef(false)
   const [state, setState] = useState<ConfirmState>("idle")
@@ -116,5 +116,22 @@ export default function EmailActionPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function EmailActionPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center p-6">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Drive Confirmation</CardTitle>
+            <CardDescription>Loading...</CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    }>
+      <EmailActionContent />
+    </Suspense>
   )
 }

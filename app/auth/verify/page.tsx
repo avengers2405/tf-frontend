@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, Suspense } from "react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -10,7 +10,7 @@ import { ApiError, verifyMagicLink } from "@/lib/auth"
 
 type VerifyState = "idle" | "loading" | "success" | "error"
 
-export default function VerifyPage() {
+function VerifyContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const hasStarted = useRef(false)
@@ -105,5 +105,22 @@ export default function VerifyPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function VerifyPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center p-6">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Email verification</CardTitle>
+            <CardDescription>Loading verification...</CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    }>
+      <VerifyContent />
+    </Suspense>
   )
 }

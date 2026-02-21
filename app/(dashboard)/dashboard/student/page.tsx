@@ -998,7 +998,7 @@ export default function StudentDashboard() {
         {/* Domain Ranking */}
         <Card className="glass lg:col-span-2 rounded-2xl p-6">
           <h2 className="mb-4 text-xl font-semibold text-foreground">Domain Strength Analysis</h2>
-          <div className="h-72">
+          <div className="h-72 w-full">
             <DomainChart domains={dynamicDomains} />
           </div>
         </Card>

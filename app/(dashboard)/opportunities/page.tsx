@@ -81,7 +81,7 @@ export default function OpportunitiesPage() {
       }
     }
 
-    if (currentUser?.id) {
+    if (currentUser?.username?.toLowerCase() === "teacher") {
       fetchTeacherProjects()
     }
   }, [currentUser?.id])

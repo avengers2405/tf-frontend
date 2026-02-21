@@ -9,4 +9,9 @@ node_modules/
 # Env
 .env*
 
+venv/
+env/
+.venv/
+.env/
+
 

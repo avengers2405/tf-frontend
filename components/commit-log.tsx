@@ -19,7 +19,7 @@ const CommitLog = ({ projectId }: { projectId: string }) => {
       try {
         // Replace with your actual backend URL/Ngrok URL
         console.log("Entered fetch commits with projectId:", projectId);
-        const response = await fetch(`http://localhost:5000/project-progress/${projectId}/commits`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/project-progress/${projectId}/commits`, {
           credentials: "include"
         });
         const data = await response.json();

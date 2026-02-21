@@ -177,10 +177,10 @@ export default function RecommendationsPage() {
       <div className="space-y-4">
         {recommendedOpportunities.length > 0 ? (
           recommendedOpportunities.map((opp, index) => (
-            <Card key={opp.id} className="glass rounded-2xl p-6 transition-all hover:shadow-xl">
-              <div className="flex items-start gap-6">
+            <Card key={opp.id} className="glass rounded-2xl p-4 transition-all hover:shadow-xl sm:p-6">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-6">
                 {/* Match Score Badge */}
-                <div className="flex-shrink-0">
+                <div className="shrink-0">
                   <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-primary/10">
                     <div className="text-center">
                       <div className="text-2xl font-bold text-primary">{opp.matchScore}%</div>
@@ -198,7 +198,7 @@ export default function RecommendationsPage() {
                 {/* Opportunity Details */}
                 <div className="flex-1 min-w-0">
                   <div className="mb-3">
-                    <div className="flex items-start justify-between gap-4 mb-2">
+                    <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                       <div>
                         <h3 className="text-xl font-semibold text-foreground">{opp.title}</h3>
                         <p className="text-muted-foreground">{opp.company}</p>
@@ -245,8 +245,8 @@ export default function RecommendationsPage() {
                     )}
                   </div>
 
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                       {opp.hasApplied ? (
                         <Button variant="outline" disabled className="gap-2">
                           <CheckCircleIcon className="h-4 w-4 text-green-600" />

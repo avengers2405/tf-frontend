@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, Suspense } from "react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -18,7 +18,7 @@ interface ConfirmResponse {
   already_confirmed?: boolean
 }
 
-export default function EmailActionPage() {
+function EmailActionContent() {
   const searchParams = useSearchParams()
   const hasStarted = useRef(false)
   const [state, setState] = useState<ConfirmState>("idle")
@@ -46,7 +46,7 @@ export default function EmailActionPage() {
       setMessage("Confirming your interest...")
 
       try {
-        const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5000"
+        const apiBaseUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:5000"
         const response = await fetch(
           `${apiBaseUrl}/drives/confirm-interest?token=${encodeURIComponent(token)}`,
           { method: "GET", credentials: "include" },
@@ -116,5 +116,22 @@ export default function EmailActionPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function EmailActionPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center p-6">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Drive Confirmation</CardTitle>
+            <CardDescription>Loading...</CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    }>
+      <EmailActionContent />
+    </Suspense>
   )
 }

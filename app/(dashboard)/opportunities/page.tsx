@@ -50,7 +50,7 @@ export default function OpportunitiesPage() {
       setLoading(true)
       try {
         console.log("fetching projects");
-        const response = await fetch(`http://localhost:5000/api/project/${currentUser?.id}`)
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/post-opportunity/getProjectOpportunitiesById/${currentUser?.id}`)
         const result = await response.json()
         
         if (result.success) {
@@ -187,9 +187,9 @@ export default function OpportunitiesPage() {
                   </div>
               </div>
               
-              <div className="flex flex-wrap gap-2 w-full md:w-auto">
+                <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap md:w-auto">
                   <Select value={userPrefs.focusArea} onValueChange={(v: any) => setUserPrefs({...userPrefs, focusArea: v})}>
-                      <SelectTrigger className="w-[140px] h-9 text-xs bg-background border-0 shadow-sm"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="h-9 w-full text-xs bg-background border-0 shadow-sm sm:w-[140px]"><SelectValue /></SelectTrigger>
                       <SelectContent>
                           <SelectItem value="Full Stack">Full Stack</SelectItem>
                           <SelectItem value="AI/ML">AI / ML</SelectItem>
@@ -200,7 +200,7 @@ export default function OpportunitiesPage() {
                   </Select>
                   
                   <Select value={userPrefs.priority} onValueChange={(v: any) => setUserPrefs({...userPrefs, priority: v})}>
-                      <SelectTrigger className="w-[130px] h-9 text-xs bg-background border-0 shadow-sm"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="h-9 w-full text-xs bg-background border-0 shadow-sm sm:w-[130px]"><SelectValue /></SelectTrigger>
                       <SelectContent>
                           <SelectItem value="Money">💰 Money</SelectItem>
                           <SelectItem value="Learning">🎓 Learning</SelectItem>
@@ -225,7 +225,7 @@ export default function OpportunitiesPage() {
             />
           </div>
 
-          <div className="flex gap-3 md:col-span-6">
+          <div className="flex flex-col gap-3 sm:flex-row md:col-span-6">
             <Select value={typeFilter} onValueChange={setTypeFilter}>
               <SelectTrigger className="w-full bg-background/50">
                 <div className="flex items-center gap-2">
@@ -265,18 +265,18 @@ export default function OpportunitiesPage() {
           return (
             <Card
               key={opp.id || opp.project_id.toString()}
-              className="glass group flex flex-col rounded-2xl p-5 transition-all hover:shadow-xl hover:border-primary/40"
+              className="glass group flex min-w-0 flex-col rounded-2xl p-4 transition-all hover:shadow-xl hover:border-primary/40 sm:p-5"
             >
               <div className="mb-4">
-                <div className="mb-2 flex items-start justify-between">
-                  <div className="flex-1 min-w-0 mr-2">
+                <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0 flex-1 sm:mr-2">
                     <h3 className="font-bold text-foreground group-hover:text-primary transition-colors truncate">
                       {opp.title}
                     </h3>
                     <p className="text-sm text-muted-foreground font-medium">{opp.company}</p>
                   </div>
                   <span
-                    className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] uppercase tracking-wider font-bold ${
+                    className={`w-fit shrink-0 self-start rounded-full px-2.5 py-0.5 text-[10px] uppercase tracking-wider font-bold sm:self-auto ${
                       opp.type?.toLowerCase() === "internship"
                         ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
                         : opp.type?.toLowerCase() === "project"
@@ -304,12 +304,12 @@ export default function OpportunitiesPage() {
               </div>
 
               <div className="mb-6 space-y-2 text-xs border-t border-muted/10 pt-4">
-                <div className="flex items-center justify-between">
+                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                    <div className="flex flex-col gap-1">
                       {opp.stipend && <span className="flex items-center gap-1.5">💰 <span className="text-foreground/80">{opp.stipend}</span></span>}
                       {opp.duration && <span className="flex items-center gap-1.5">⏱️ <span>{opp.duration}</span></span>}
                    </div>
-                   <div className="text-right flex flex-col gap-1">
+                   <div className="flex flex-col gap-1 sm:text-right">
                       <span className={daysLeft <= 3 && daysLeft > 0 ? "text-destructive font-semibold" : ""}>
                         📅 {daysLeft > 0 ? `${daysLeft} days left` : "Closed"}
                       </span>
@@ -318,11 +318,11 @@ export default function OpportunitiesPage() {
                 </div>
               </div>
 
-              <div className={`mt-auto grid gap-2 ${isStudent ? "grid-cols-2" : "grid-cols-1"}`}>
+              <div className={`mt-auto grid gap-2 ${isStudent ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1"}`}>
                 {isStudent && (
                   <Button 
                       onClick={() => handleCheckVibe(opp)}
-                      className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-sm border-0" 
+                      className="w-full bg-linear-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-sm border-0" 
                       size="sm"
                   >
                     <SparklesIcon className="w-3 h-3 mr-1.5 text-yellow-300" />

@@ -386,7 +386,7 @@ export default function TeacherDashboard() {
     const progress = calculateProgress(selectedProject.phases);
 
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
+      <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
         <div className="max-w-5xl mx-auto space-y-6">
           {/* Navigation Header */}
           <div className="flex items-center justify-between">
@@ -444,7 +444,7 @@ export default function TeacherDashboard() {
           </div>
 
           {/* Project Timeline */}
-          <div className="bg-white rounded-lg shadow-md p-8 border border-gray-100">
+          <div className="bg-white rounded-lg shadow-md p-4 sm:p-8 border border-gray-100">
             <div className="flex items-center mb-6 border-b pb-4">
               <ClipboardList className="w-6 h-6 mr-3 text-blue-600" />
               <div>
@@ -475,7 +475,7 @@ export default function TeacherDashboard() {
   return (
     <div className="flex h-screen bg-gray-50">
       <main className="flex-1 overflow-auto">
-        <div className="p-8">
+        <div className="p-4 sm:p-8">
           <div className="mb-6">
             <h2 className="text-2xl font-bold text-gray-900">All Projects</h2>
             <p className="text-gray-600 mt-1">Monitor and manage all student projects</p>
@@ -530,7 +530,7 @@ export default function TeacherDashboard() {
           </div>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <div className="mb-8 grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-4">
             <div className="bg-white p-6 rounded-lg border border-gray-200">
               <div className="flex items-center justify-between">
                 <div>

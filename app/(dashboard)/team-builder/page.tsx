@@ -58,7 +58,7 @@ export default function TeamBuilderPage() {
   useEffect(() => {
     const fetchStudents = async () => {
       try {
-        const response = await fetch("http://localhost:5000/api/students", {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/students`, {
           credentials: "include"
         });
         const data = await response.json();
@@ -91,7 +91,7 @@ export default function TeamBuilderPage() {
 
       try {
         setIsLoading(true);
-        const response = await fetch(`http://localhost:5000/api/team-builder/get-my-teams/${currentUser.id}`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/team-builder/get-my-teams/${currentUser.id}`, {
           credentials: "include"
         });
         
@@ -200,7 +200,7 @@ export default function TeamBuilderPage() {
     }
 
   try {
-    const response = await fetch('http://localhost:5000/api/team-builder/create-team', {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/team-builder/create-team`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: "include",
@@ -270,19 +270,19 @@ export default function TeamBuilderPage() {
   return (
     <div className="space-y-8 pb-12 relative">
       {/* --- Header --- */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Team Builder</h1>
           <p className="mt-1 text-muted-foreground">Build complementary teams for your projects</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
           {!isCreating && (
-            <Button onClick={startCreation} className="bg-primary text-primary-foreground">
+            <Button onClick={startCreation} className="w-full bg-primary text-primary-foreground sm:w-auto">
               <PlusIcon className="mr-2 h-5 w-5" />
               Create New Team
             </Button>
           )}
-          <Button variant="outline" onClick={handleRegenerateRecommendations}>
+          <Button variant="outline" onClick={handleRegenerateRecommendations} className="w-full sm:w-auto">
             <SparklesIcon className="mr-2 h-5 w-5" />
             Regenerate Recs
           </Button>

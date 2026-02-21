@@ -1,9 +1,7 @@
- 
-
 "use client"
 
 import { useEffect, useState } from "react"
-import { useAppStore } from "@/lib/store"
+// Removed useAppStore as we are now fetching data dynamically
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -16,21 +14,17 @@ import Link from "next/link"
 import { getDaysUntil } from "@/lib/utils"
 import { analyzeOpportunity, generateUserIdeal, UserPreferences } from "@/lib/vibe-logic"
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Legend } from 'recharts'
-
-
 import { useUser } from "@/contexts/UserContext"
 
 export default function OpportunitiesPage() {
   const { user: currentUser, loading: userLoading } = useUser()
-  const { opportunities } = useAppStore()
   const [search, setSearch] = useState("")
   const [typeFilter, setTypeFilter] = useState<string>("all")
   const [sortBy, setSortBy] = useState("recent")
-  const { user, error, refreshUser } = useUser()
-  
+
   // --- USER PERMISSION CHECKS ---
-  const isStudent = user?.username === "student"
-  const canPostOpp = ["teacher", "tnp", "recruiter"].includes(user?.username?.toLowerCase() || "")
+  const isStudent = currentUser?.username === "student"
+  const canPostOpp = ["teacher", "tnp", "recruiter"].includes(currentUser?.username?.toLowerCase() || "")
 
   // --- VIBE CHECK STATE ---
   const [userPrefs, setUserPrefs] = useState<UserPreferences>({
@@ -41,54 +35,97 @@ export default function OpportunitiesPage() {
   const [selectedOpp, setSelectedOpp] = useState<any>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [analyzing, setAnalyzing] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [projectOpportunities, setProjectOpportunities] = useState<any[]>([])
 
-  console.log("Current User:", currentUser)
+  // --- DATA STATE ---
+  const [loading, setLoading] = useState(true)
+  const [projectOpportunities, setProjectOpportunities] = useState<any[]>([])
+  const [internshipOpportunities, setInternshipOpportunities] = useState<any[]>([]) // Added state for internships
+  const [isPlaced, setIsPlaced] = useState(false)
+
   useEffect(() => {
     const fetchTeacherProjects = async () => {
       setLoading(true)
       try {
-        console.log("fetching projects");
-        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/post-opportunity/getProjectOpportunitiesById/${currentUser?.id}`)
-        const result = await response.json()
-        
-        if (result.success) {
-          // Map backend 'Project' schema to match your frontend 'Opportunity' interface
-          const mappedData = result.data.map((proj: any) => ({
+        // Prepare fetch promises
+        const fetchProjects = currentUser?.id
+          ? fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/post-opportunity/getProjectOpportunitiesById/${currentUser.id}`).then(res => res.json())
+          : Promise.resolve({ success: false, data: [] })
+
+        // Assuming your new internship routes are mounted at /internships or /api/internships
+        // Adjust the path below if your backend mounts it differently!
+        const fetchInternships = fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/internships/`).then(res => {
+          if (!res.ok) throw new Error("Failed to fetch internships")
+          return res.json()
+        })
+        console.log("Internships", fetchInternships);
+        const fetchIsPlaced = currentUser?.id
+          ? fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/internships/check-placed/${currentUser.id}`).then(res => res.json())
+          : Promise.resolve({ isPlaced: false })
+
+        // Execute fetches concurrently
+        const [projectsResult, internshipsResult, placedResult] = await Promise.all([
+          fetchProjects.catch(() => ({ success: false, data: [] })),
+          fetchInternships.catch(() => []),
+          fetchIsPlaced.catch(() => ({ isPlaced: false }))
+        ])
+
+        if (placedResult?.isPlaced) {
+          setIsPlaced(true)
+        }
+
+        // 1. Map Projects
+        if (projectsResult.success) {
+          const mappedProjects = projectsResult.data.map((proj: any) => ({
             id: proj.project_id.toString(),
             title: proj.title,
-            company: "Academic Project", // Projects are internal
+            company: "Academic Project",
             type: "project",
             description: proj.description,
-            skills: proj.technology_stack.split(',').map((s: string) => s.trim()),
-            postedDate: new Date().toISOString(), // Default for UI sorting
-            deadline: new Date(new Date().setMonth(new Date().getMonth() + 3)).toISOString(), // Placeholder deadline
+            skills: proj.technology_stack ? proj.technology_stack.split(',').map((s: string) => s.trim()) : [],
+            postedDate: new Date().toISOString(),
+            deadline: new Date(new Date().setMonth(new Date().getMonth() + 3)).toISOString(),
             stipend: "Academic Credit",
             duration: proj.academic_year,
             applicants: proj._count?.groups || 0
           }))
-          setProjectOpportunities(mappedData)
-          const existingOpps = useAppStore.getState().opportunities;
-          const merged = [...existingOpps, ...mappedData];
-          const uniqueOpps = Array.from(new Map(merged.map(item => [item.id, item])).values());
-          useAppStore.setState({ opportunities: uniqueOpps });
+          setProjectOpportunities(mappedProjects)
         }
+
+        // 2. Map Internships (From your new Prisma controller)
+        if (Array.isArray(internshipsResult)) {
+          const mappedInternships = internshipsResult.map((internship: any) => ({
+            id: internship.id,
+            title: internship.title,
+            company: internship.company || internship.postedBy?.company_name || "Unknown",
+            type: "internship",
+            description: internship.description,
+            // Ensure skills is always an array for the UI components
+            skills: Array.isArray(internship.skills)
+              ? internship.skills
+              : (typeof internship.skills === 'string' ? internship.skills.split(',').map((s: string) => s.trim()) : []),
+            postedDate: internship.posted_date || new Date().toISOString(),
+            deadline: internship.deadline || new Date().toISOString(),
+            stipend: internship.stipend || "Unpaid",
+            duration: internship.duration || "N/A",
+            applicants: 0 // Optional: update if you add an applicant count to your schema
+          }))
+          setInternshipOpportunities(mappedInternships)
+        }
+
       } catch (error) {
-        console.error("Error fetching projects:", error)
+        console.error("Error fetching opportunities:", error)
       } finally {
         setLoading(false)
       }
     }
 
-    if (currentUser?.username?.toLowerCase() === "teacher") {
+    if (currentUser?.id) {
       fetchTeacherProjects()
     }
   }, [currentUser?.id])
 
-  // ... (Keep search, filter, and vibe check logic as is, using the local 'opportunities' state)
 
-  if (loading) {
+  if (loading || userLoading) {
     return (
       <div className="flex h-64 items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
@@ -96,10 +133,27 @@ export default function OpportunitiesPage() {
     )
   }
 
+  if (isPlaced) {
+    return (
+      <div className="flex h-[70vh] items-center justify-center">
+        <Card className="glass rounded-2xl p-12 text-center max-w-md w-full border-primary/20 bg-primary/5">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-3xl">
+              🎉
+            </div>
+            <h2 className="text-2xl font-bold text-foreground">Congratulations!</h2>
+            <p className="text-muted-foreground">
+              You have already been selected for an opportunity. The next step is to focus on your upcoming journey!
+            </p>
+          </div>
+        </Card>
+      </div>
+    )
+  }
+
   // --- CHART DATA GENERATOR ---
   const getChartData = () => {
     if (!selectedOpp) return []
-    
     const oppStats = analyzeOpportunity(selectedOpp, userPrefs)
     const userStats = generateUserIdeal(userPrefs)
 
@@ -120,39 +174,39 @@ export default function OpportunitiesPage() {
     setTimeout(() => setAnalyzing(false), 1200)
   }
 
-
   // --- BULLETPROOF SEARCH AND FILTER LOGIC ---
-  // 1. Ensure opportunities is always an array (prevents crash on load)
-  const safeOpportunities = Array.isArray(opportunities) ? opportunities : []
-
-//   const filteredOpportunities = safeOpportunities
-
-  const combinedOpportunities = [...opportunities, ...projectOpportunities];
+  // Combine both dynamically fetched arrays
+  const combinedOpportunities = [...internshipOpportunities, ...projectOpportunities]
 
   const filteredOpportunities = combinedOpportunities.filter((opp) => {
-      if (!opp) return false
+    if (!opp) return false
 
-      // 2. Search Matching (Safe & Case-insensitive)
-      const searchTerm = search.toLowerCase().trim()
-      const safeTitle = opp.title?.toLowerCase() || ""
-      const safeCompany = opp.company?.toLowerCase() || ""
-      const safeSkills = Array.isArray(opp.skills) ? opp.skills : []
+    // 2. Search Matching
+    const searchTerm = search.toLowerCase().trim()
 
-      const matchesSearch = 
-        searchTerm === "" || 
-        safeTitle.includes(searchTerm) ||
-        safeCompany.includes(searchTerm) ||
-        safeSkills.some((skill: string) => skill?.toLowerCase().includes(searchTerm))
+    const safeTitle = opp.title?.toLowerCase() || ""
+    const safeCompany = opp.company?.toLowerCase() || ""
+    const safeSkills = Array.isArray(opp.skills) ? opp.skills : []
 
-      // 3. Type Matching (Forces both sides to lowercase to prevent "Internship" !== "internship")
-      const safeType = opp.type?.toLowerCase() || ""
-      const filterType = typeFilter.toLowerCase()
-      const matchesType = typeFilter === "all" || safeType === filterType
+    const matchesSearch =
+      searchTerm === "" ||
+      safeTitle.includes(searchTerm) ||
+      safeCompany.includes(searchTerm) ||
+      safeSkills.some((skill: string) =>
+        skill?.toLowerCase().includes(searchTerm)
+      )
 
-      return matchesSearch && matchesType
-    })
+    // 3. Type Matching
+    const safeType = opp.type?.toLowerCase() || ""
+    const filterType = typeFilter.toLowerCase()
+
+    const matchesType =
+      typeFilter === "all" || safeType === filterType
+
+    return matchesSearch && matchesType
+  })
     .sort((a, b) => {
-      // 4. Sorting Logic (Safe Date Parsing)
+      // 4. Sorting Logic
       if (sortBy === "deadline") {
         return new Date(a.deadline || 0).getTime() - new Date(b.deadline || 0).getTime()
       }
@@ -166,7 +220,7 @@ export default function OpportunitiesPage() {
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Opportunities</h1>
           <p className="text-muted-foreground">{filteredOpportunities.length} opportunities available</p>
         </div>
-        
+
         {canPostOpp && (
           <Button asChild className="w-full sm:w-auto">
             <Link href="/post-opportunity">Post Opportunity</Link>
@@ -177,37 +231,37 @@ export default function OpportunitiesPage() {
       {isStudent && (
         <Card className="glass rounded-2xl p-4 border-primary/20 bg-primary/5">
           <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-              <div className="flex items-center gap-3 w-full md:w-auto">
-                  <div className="p-2 bg-background rounded-full shadow-sm text-primary">
-                      <UserCircleIcon className="w-6 h-6" />
-                  </div>
-                  <div>
-                      <h3 className="font-bold text-sm">Vibe Preferences</h3>
-                      <p className="text-xs text-muted-foreground">Calibrate the AI to find your perfect fit</p>
-                  </div>
+            <div className="flex items-center gap-3 w-full md:w-auto">
+              <div className="p-2 bg-background rounded-full shadow-sm text-primary">
+                <UserCircleIcon className="w-6 h-6" />
               </div>
-              
-                <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap md:w-auto">
-                  <Select value={userPrefs.focusArea} onValueChange={(v: any) => setUserPrefs({...userPrefs, focusArea: v})}>
-                    <SelectTrigger className="h-9 w-full text-xs bg-background border-0 shadow-sm sm:w-[140px]"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                          <SelectItem value="Full Stack">Full Stack</SelectItem>
-                          <SelectItem value="AI/ML">AI / ML</SelectItem>
-                          <SelectItem value="Mobile">Mobile Dev</SelectItem>
-                          <SelectItem value="Data">Data Science</SelectItem>
-                          <SelectItem value="Cybersecurity">Cybersecurity</SelectItem>
-                      </SelectContent>
-                  </Select>
-                  
-                  <Select value={userPrefs.priority} onValueChange={(v: any) => setUserPrefs({...userPrefs, priority: v})}>
-                      <SelectTrigger className="h-9 w-full text-xs bg-background border-0 shadow-sm sm:w-[130px]"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                          <SelectItem value="Money">💰 Money</SelectItem>
-                          <SelectItem value="Learning">🎓 Learning</SelectItem>
-                          <SelectItem value="Balance">🧘 Balance</SelectItem>
-                      </SelectContent>
-                  </Select>
+              <div>
+                <h3 className="font-bold text-sm">Vibe Preferences</h3>
+                <p className="text-xs text-muted-foreground">Calibrate the AI to find your perfect fit</p>
               </div>
+            </div>
+
+            <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap md:w-auto">
+              <Select value={userPrefs.focusArea} onValueChange={(v: any) => setUserPrefs({ ...userPrefs, focusArea: v })}>
+                <SelectTrigger className="h-9 w-full text-xs bg-background border-0 shadow-sm sm:w-[140px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Full Stack">Full Stack</SelectItem>
+                  <SelectItem value="AI/ML">AI / ML</SelectItem>
+                  <SelectItem value="Mobile">Mobile Dev</SelectItem>
+                  <SelectItem value="Data">Data Science</SelectItem>
+                  <SelectItem value="Cybersecurity">Cybersecurity</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={userPrefs.priority} onValueChange={(v: any) => setUserPrefs({ ...userPrefs, priority: v })}>
+                <SelectTrigger className="h-9 w-full text-xs bg-background border-0 shadow-sm sm:w-[130px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Money"> Money</SelectItem>
+                  <SelectItem value="Learning"> Learning</SelectItem>
+                  <SelectItem value="Balance"> Balance</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </Card>
       )}
@@ -237,7 +291,7 @@ export default function OpportunitiesPage() {
                 <SelectItem value="all">All Types</SelectItem>
                 <SelectItem value="internship">Internships</SelectItem>
                 <SelectItem value="project">Projects</SelectItem>
-                <SelectItem value="fulltime">Full-time</SelectItem>
+
               </SelectContent>
             </Select>
 
@@ -264,7 +318,7 @@ export default function OpportunitiesPage() {
 
           return (
             <Card
-              key={opp.id || opp.project_id.toString()}
+              key={opp.id}
               className="glass group flex min-w-0 flex-col rounded-2xl p-4 transition-all hover:shadow-xl hover:border-primary/40 sm:p-5"
             >
               <div className="mb-4">
@@ -276,13 +330,12 @@ export default function OpportunitiesPage() {
                     <p className="text-sm text-muted-foreground font-medium">{opp.company}</p>
                   </div>
                   <span
-                    className={`w-fit shrink-0 self-start rounded-full px-2.5 py-0.5 text-[10px] uppercase tracking-wider font-bold sm:self-auto ${
-                      opp.type?.toLowerCase() === "internship"
+                    className={`w-fit shrink-0 self-start rounded-full px-2.5 py-0.5 text-[10px] uppercase tracking-wider font-bold sm:self-auto ${opp.type?.toLowerCase() === "internship"
                         ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
                         : opp.type?.toLowerCase() === "project"
                           ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
                           : "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
-                    }`}
+                      }`}
                   >
                     {opp.type}
                   </span>
@@ -304,34 +357,34 @@ export default function OpportunitiesPage() {
               </div>
 
               <div className="mb-6 space-y-2 text-xs border-t border-muted/10 pt-4">
-                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                   <div className="flex flex-col gap-1">
-                      {opp.stipend && <span className="flex items-center gap-1.5">💰 <span className="text-foreground/80">{opp.stipend}</span></span>}
-                      {opp.duration && <span className="flex items-center gap-1.5">⏱️ <span>{opp.duration}</span></span>}
-                   </div>
-                   <div className="flex flex-col gap-1 sm:text-right">
-                      <span className={daysLeft <= 3 && daysLeft > 0 ? "text-destructive font-semibold" : ""}>
-                        📅 {daysLeft > 0 ? `${daysLeft} days left` : "Closed"}
-                      </span>
-                      {opp.applicants && <span className="text-muted-foreground">👥 {opp.applicants} applied</span>}
-                   </div>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex flex-col gap-1">
+                    {opp.stipend && <span className="flex items-center gap-1.5">💰 <span className="text-foreground/80">{opp.stipend}</span></span>}
+                    {opp.duration && <span className="flex items-center gap-1.5">⏱️ <span>{opp.duration}</span></span>}
+                  </div>
+                  <div className="flex flex-col gap-1 sm:text-right">
+                    <span className={daysLeft <= 3 && daysLeft > 0 ? "text-destructive font-semibold" : ""}>
+                      📅 {daysLeft > 0 ? `${daysLeft} days left` : "Closed"}
+                    </span>
+                    {opp.applicants !== undefined && <span className="text-muted-foreground">👥 {opp.applicants} applied</span>}
+                  </div>
                 </div>
               </div>
 
               <div className={`mt-auto grid gap-2 ${isStudent ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1"}`}>
                 {isStudent && (
-                  <Button 
-                      onClick={() => handleCheckVibe(opp)}
-                      className="w-full bg-linear-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-sm border-0" 
-                      size="sm"
+                  <Button
+                    onClick={() => handleCheckVibe(opp)}
+                    className="w-full bg-linear-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-sm border-0"
+                    size="sm"
                   >
                     <SparklesIcon className="w-3 h-3 mr-1.5 text-yellow-300" />
                     Vibe Check
                   </Button>
                 )}
-                
+
                 <Button asChild className="w-full shadow-sm" variant="outline" size="sm">
-                  <Link href={`/opportunities/${opp.id || opp.project_id.toString()}`}>Details</Link>
+                  <Link href={`/opportunities/${opp.id}`}>Details</Link>
                 </Button>
               </div>
             </Card>
@@ -343,9 +396,9 @@ export default function OpportunitiesPage() {
       {filteredOpportunities.length === 0 && (
         <Card className="glass rounded-2xl p-16 text-center border-dashed">
           <div className="max-w-xs mx-auto space-y-2">
-             <p className="text-lg font-medium">No results found</p>
-             <p className="text-sm text-muted-foreground">Try adjusting your filters or search terms to find what you're looking for.</p>
-             <Button variant="link" onClick={() => {setSearch(""); setTypeFilter("all")}}>Clear all filters</Button>
+            <p className="text-lg font-medium">No results found</p>
+            <p className="text-sm text-muted-foreground">Try adjusting your filters or search terms to find what you're looking for.</p>
+            <Button variant="link" onClick={() => { setSearch(""); setTypeFilter("all") }}>Clear all filters</Button>
           </div>
         </Card>
       )}
@@ -353,112 +406,112 @@ export default function OpportunitiesPage() {
       {/* --- VIBE CHECK MODAL --- */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="max-w-5xl bg-zinc-950 border-zinc-800 text-white p-0 overflow-hidden rounded-2xl h-[85vh] md:h-[600px]">
-            {analyzing ? (
-                <div className="h-full flex flex-col items-center justify-center space-y-6">
-                    <div className="relative">
-                        <div className="h-20 w-20 rounded-full border-4 border-t-purple-500 border-r-purple-500 border-b-transparent border-l-transparent animate-spin"></div>
-                        <div className="absolute inset-0 flex items-center justify-center text-xl">🧠</div>
-                    </div>
-                    <div className="text-center space-y-2">
-                        <h3 className="text-xl font-bold animate-pulse text-purple-400">Analyzing Compatibility...</h3>
-                        <p className="text-zinc-500 text-sm">Matching {userPrefs.focusArea} skills with {selectedOpp?.company}...</p>
-                    </div>
+          {analyzing ? (
+            <div className="h-full flex flex-col items-center justify-center space-y-6">
+              <div className="relative">
+                <div className="h-20 w-20 rounded-full border-4 border-t-purple-500 border-r-purple-500 border-b-transparent border-l-transparent animate-spin"></div>
+                <div className="absolute inset-0 flex items-center justify-center text-xl">🧠</div>
+              </div>
+              <div className="text-center space-y-2">
+                <h3 className="text-xl font-bold animate-pulse text-purple-400">Analyzing Compatibility...</h3>
+                <p className="text-zinc-500 text-sm">Matching {userPrefs.focusArea} skills with {selectedOpp?.company}...</p>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col md:flex-row h-full">
+              {/* LEFT: CHART */}
+              <div className="w-full md:w-1/2 bg-zinc-900/50 p-8 flex flex-col relative">
+                <div className="absolute top-4 left-4 z-10">
+                  <Badge className="bg-zinc-800 text-zinc-300 border-0">Priority: {userPrefs.priority}</Badge>
                 </div>
-            ) : (
-                <div className="flex flex-col md:flex-row h-full">
-                    {/* LEFT: CHART */}
-                    <div className="w-full md:w-1/2 bg-zinc-900/50 p-8 flex flex-col relative">
-                        <div className="absolute top-4 left-4 z-10">
-                            <Badge className="bg-zinc-800 text-zinc-300 border-0">Priority: {userPrefs.priority}</Badge>
-                        </div>
-                        <div className="flex-1 min-h-[300px] flex items-center justify-center">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <RadarChart cx="50%" cy="50%" outerRadius="65%" data={getChartData()}>
-                                    <PolarGrid stroke="#52525b" strokeOpacity={0.5} />
-                                    <PolarAngleAxis 
-                                        dataKey="subject" 
-                                        tick={{ fill: 'white', fontSize: 12, fontWeight: 'bold' }} 
-                                    />
-                                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                                    
-                                    <Radar 
-                                        name="You" 
-                                        dataKey="A" 
-                                        stroke="#a855f7" 
-                                        strokeWidth={3}
-                                        fill="#a855f7" 
-                                        fillOpacity={0.5} 
-                                        dot={{ r: 4, fillOpacity: 1 }}
-                                    />
-                                    
-                                    <Radar 
-                                        name={selectedOpp?.company} 
-                                        dataKey="B" 
-                                        stroke="#10b981" 
-                                        strokeWidth={3}
-                                        fill="#10b981" 
-                                        fillOpacity={0.5} 
-                                        dot={{ r: 4, fillOpacity: 1 }}
-                                    />
-                                    
-                                    <Legend wrapperStyle={{ paddingTop: '20px', fontSize: '14px' }}/>
-                                </RadarChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </div>
+                <div className="flex-1 min-h-[300px] flex items-center justify-center">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RadarChart cx="50%" cy="50%" outerRadius="65%" data={getChartData()}>
+                      <PolarGrid stroke="#52525b" strokeOpacity={0.5} />
+                      <PolarAngleAxis
+                        dataKey="subject"
+                        tick={{ fill: 'white', fontSize: 12, fontWeight: 'bold' }}
+                      />
+                      <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
 
-                    {/* RIGHT: INSIGHTS */}
-                    <div className="w-full md:w-1/2 bg-zinc-950 p-6 md:p-8 flex flex-col justify-center border-l border-zinc-800">
-                        <div className="mb-6">
-                            <h2 className="text-2xl font-black mb-1">{selectedOpp?.title}</h2>
-                            <p className="text-zinc-400">{selectedOpp?.company}</p>
-                        </div>
+                      <Radar
+                        name="You"
+                        dataKey="A"
+                        stroke="#a855f7"
+                        strokeWidth={3}
+                        fill="#a855f7"
+                        fillOpacity={0.5}
+                        dot={{ r: 4, fillOpacity: 1 }}
+                      />
 
-                        <div className="space-y-4 mb-8">
-                             {analyzeOpportunity(selectedOpp, userPrefs).financials > 80 && userPrefs.priority === 'Money' && (
-                                <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex gap-3">
-                                    <CurrencyRupeeIcon className="w-5 h-5 text-emerald-500 shrink-0" />
-                                    <div>
-                                        <h4 className="font-bold text-sm text-emerald-400">High Financial Match</h4>
-                                        <p className="text-xs text-zinc-400">Top tier stipend for this role type.</p>
-                                    </div>
-                                </div>
-                            )}
+                      <Radar
+                        name={selectedOpp?.company}
+                        dataKey="B"
+                        stroke="#10b981"
+                        strokeWidth={3}
+                        fill="#10b981"
+                        fillOpacity={0.5}
+                        dot={{ r: 4, fillOpacity: 1 }}
+                      />
 
-                            {analyzeOpportunity(selectedOpp, userPrefs).skillMatch < 50 ? (
-                                <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 flex gap-3">
-                                    <AcademicCapIcon className="w-5 h-5 text-red-500 shrink-0" />
-                                    <div>
-                                        <h4 className="font-bold text-sm text-red-400">Skill Gap</h4>
-                                        <p className="text-xs text-zinc-400">Requires skills outside your {userPrefs.focusArea} focus.</p>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 flex gap-3">
-                                    <SparklesIcon className="w-5 h-5 text-purple-500 shrink-0" />
-                                    <div>
-                                        <h4 className="font-bold text-sm text-purple-400">Great Fit</h4>
-                                        <p className="text-xs text-zinc-400">Your tech stack aligns perfectly.</p>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="flex gap-3">
-                            <Button className="flex-1 bg-white text-black hover:bg-zinc-200 font-bold">Apply Now</Button>
-                            
-                            <Button 
-                                variant="outline" 
-                                className="border-zinc-700 text-zinc-300 hover:bg-zinc-900 hover:text-white" 
-                                onClick={() => setIsModalOpen(false)}
-                            >
-                                <XMarkIcon className="w-4 h-4 mr-2" />
-                                Close
-                            </Button>
-                        </div>
-                    </div>
+                      <Legend wrapperStyle={{ paddingTop: '20px', fontSize: '14px' }} />
+                    </RadarChart>
+                  </ResponsiveContainer>
                 </div>
-            )}
+              </div>
+
+              {/* RIGHT: INSIGHTS */}
+              <div className="w-full md:w-1/2 bg-zinc-950 p-6 md:p-8 flex flex-col justify-center border-l border-zinc-800">
+                <div className="mb-6">
+                  <h2 className="text-2xl font-black mb-1">{selectedOpp?.title}</h2>
+                  <p className="text-zinc-400">{selectedOpp?.company}</p>
+                </div>
+
+                <div className="space-y-4 mb-8">
+                  {analyzeOpportunity(selectedOpp, userPrefs).financials > 80 && userPrefs.priority === 'Money' && (
+                    <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex gap-3">
+                      <CurrencyRupeeIcon className="w-5 h-5 text-emerald-500 shrink-0" />
+                      <div>
+                        <h4 className="font-bold text-sm text-emerald-400">High Financial Match</h4>
+                        <p className="text-xs text-zinc-400">Top tier stipend for this role type.</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {analyzeOpportunity(selectedOpp, userPrefs).skillMatch < 50 ? (
+                    <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 flex gap-3">
+                      <AcademicCapIcon className="w-5 h-5 text-red-500 shrink-0" />
+                      <div>
+                        <h4 className="font-bold text-sm text-red-400">Skill Gap</h4>
+                        <p className="text-xs text-zinc-400">Requires skills outside your {userPrefs.focusArea} focus.</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 flex gap-3">
+                      <SparklesIcon className="w-5 h-5 text-purple-500 shrink-0" />
+                      <div>
+                        <h4 className="font-bold text-sm text-purple-400">Great Fit</h4>
+                        <p className="text-xs text-zinc-400">Your tech stack aligns perfectly.</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex gap-3">
+                  <Button className="flex-1 bg-white text-black hover:bg-zinc-200 font-bold">Apply Now</Button>
+
+                  <Button
+                    variant="outline"
+                    className="border-zinc-700 text-zinc-300 hover:bg-zinc-900 hover:text-white"
+                    onClick={() => setIsModalOpen(false)}
+                  >
+                    <XMarkIcon className="w-4 h-4 mr-2" />
+                    Close
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

@@ -4,7 +4,7 @@ import { StatCard } from "@/components/ui/stat-card"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { BriefcaseIcon, UserGroupIcon, ChartBarIcon, CheckCircleIcon, ClockIcon } from "@heroicons/react/24/outline"
+import { BriefcaseIcon, UserGroupIcon, ChartBarIcon, CheckCircleIcon, ClockIcon, PaperAirplaneIcon } from "@heroicons/react/24/outline"
 import { DomainChart } from "@/components/ui/domain-chart"
 
 export default function TnPDashboard() {
@@ -114,6 +114,12 @@ export default function TnPDashboard() {
               <Link href="/analytics">
                 <ChartBarIcon className="mr-2 h-5 w-5" />
                 View Analytics
+              </Link>
+            </Button>
+            <Button className="w-full justify-start bg-transparent" variant="outline" asChild>
+              <Link href="/send-invites">
+                <PaperAirplaneIcon className="mr-2 h-5 w-5" />
+                Send Invites
               </Link>
             </Button>
           </div>

@@ -15,3 +15,5 @@ env/
 .env/
 
 
+
+/lib/generated/prisma

@@ -75,7 +75,15 @@ export function Topbar({ onMenuClick }: TopbarProps) {
             </div>
           </div>
 
-          <UserCircleIcon className="hidden h-9 w-9 text-muted-foreground sm:block" />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="hidden h-11 w-11 p-0 sm:inline-flex"
+            onClick={() => router.push("/profile")}
+          >
+            <UserCircleIcon className="h-10 w-10 text-muted-foreground" />
+            <span className="sr-only">Open profile</span>
+          </Button>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -96,6 +104,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => router.push("/profile")}>Profile</DropdownMenuItem>
               <DropdownMenuItem onClick={handleLogout} disabled={isLoggingOut}>
                 {isLoggingOut ? "Signing out..." : "Logout"}
               </DropdownMenuItem>

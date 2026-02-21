@@ -86,13 +86,13 @@ const StudentDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6">
+        <h1 className="mb-6 text-2xl font-bold sm:text-3xl">
           Project Dashboard
         </h1>
 
-        <div className="grid lg:grid-cols-3 gap-6">
+        <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2">
             <ProjectDashboardView
               projectData={projectData}

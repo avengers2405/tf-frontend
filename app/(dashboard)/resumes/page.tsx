@@ -36,7 +36,7 @@ export default function ResumesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">
             {showAnonymous ? "Anonymous Student Database" : "Student Database"}
@@ -46,7 +46,7 @@ export default function ResumesPage() {
           </p>
         </div>
         {currentRole === "recruiter" && (
-          <Button variant="outline" onClick={() => setShowAnonymous(!showAnonymous)}>
+          <Button variant="outline" onClick={() => setShowAnonymous(!showAnonymous)} className="w-full sm:w-auto">
             <EyeIcon className="mr-2 h-4 w-4" />
             {showAnonymous ? "Show Full Profiles" : "Show Anonymous"}
           </Button>
@@ -55,8 +55,8 @@ export default function ResumesPage() {
 
       {/* Filters */}
       <Card className="glass rounded-2xl p-4">
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="relative flex-1 min-w-[200px]">
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
+          <div className="relative w-full flex-1 min-w-0 sm:min-w-[220px]">
             <MagnifyingGlassIcon className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search by name, skills, department..."
@@ -67,7 +67,7 @@ export default function ResumesPage() {
           </div>
 
           <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
-            <SelectTrigger className="w-[200px]">
+            <SelectTrigger className="w-full sm:w-[200px]">
               <FunnelIcon className="mr-2 h-4 w-4" />
               <SelectValue />
             </SelectTrigger>
@@ -82,7 +82,7 @@ export default function ResumesPage() {
           </Select>
 
           <Select value={yearFilter} onValueChange={setYearFilter}>
-            <SelectTrigger className="w-[150px]">
+            <SelectTrigger className="w-full sm:w-[150px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -100,7 +100,7 @@ export default function ResumesPage() {
             placeholder="Min CGPA"
             value={minCGPA}
             onChange={(e) => setMinCGPA(e.target.value)}
-            className="w-[120px]"
+            className="w-full sm:w-[120px]"
           />
         </div>
       </Card>
@@ -135,7 +135,7 @@ export default function ResumesPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-5 gap-1 mb-4">
+            <div className="mb-4 grid grid-cols-3 gap-1 sm:grid-cols-5">
               {Object.entries(student.domains).map(([domain, score]) => (
                 <div key={domain} className="text-center">
                   <div className="text-xs font-medium text-primary">{score}</div>
@@ -194,7 +194,7 @@ export default function ResumesPage() {
 
               <div>
                 <h4 className="mb-2 font-medium text-foreground">Domain Expertise</h4>
-                <div className="grid grid-cols-5 gap-3">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
                   {Object.entries(selectedStudent.domains).map(([domain, score]: [string, any]) => (
                     <div key={domain} className="text-center rounded-lg border border-border p-3">
                       <div className="text-2xl font-bold text-primary">{score}</div>

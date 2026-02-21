@@ -1,5 +1,6 @@
 "use client"
 
+import type { ComponentType, SVGProps } from "react"
 import Link from "next/link"
 import { useAppStore } from "@/lib/store"
 import { cn } from "@/lib/utils"
@@ -19,13 +20,23 @@ import {
   ArrowTrendingUpIcon,
 } from "@heroicons/react/24/outline"
 
-export function Sidebar() {
+type SidebarProps = {
+  onNavigate?: () => void
+}
+
+type NavItem = {
+  name: string
+  href: string
+  icon: ComponentType<SVGProps<SVGSVGElement>>
+}
+
+export function Sidebar({ onNavigate }: SidebarProps) {
   const pathname = usePathname()
   const { currentRole } = useAppStore()
   const { user } = useUser()
   const activeRole = user?.role ?? currentRole
 
-  const navigation = {
+  const navigation: Record<string, NavItem[]> = {
     student: [
       { name: "Dashboard", href: "/dashboard/student", icon: HomeIcon },
       { name: "Opportunities", href: "/opportunities", icon: BriefcaseIcon },
@@ -61,7 +72,7 @@ export function Sidebar() {
   const links = navigation[activeRole] || navigation.student
 
   return (
-    <div className="glass-strong flex h-screen w-64 flex-col border-r border-border">
+    <div className="flex h-full w-64 max-w-[85vw] flex-col border-r border-border bg-sidebar md:h-screen">
       <div className="flex h-16 items-center border-b border-border px-6">
         <Link href="/" className="flex items-center gap-2">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
@@ -81,6 +92,7 @@ export function Sidebar() {
             <Link
               key={item.name}
               href={item.href}
+              onClick={onNavigate}
               className={cn(
                 "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
                 isActive

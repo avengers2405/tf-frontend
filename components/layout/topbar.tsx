@@ -1,16 +1,21 @@
 "use client"
 
-import { BellIcon, MagnifyingGlassIcon, UserCircleIcon } from "@heroicons/react/24/outline"
+import { BellIcon, UserCircleIcon, Bars3Icon } from "@heroicons/react/24/outline"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAppStore } from "@/lib/store"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import Link from "next/link"
 import { useUser } from "@/contexts/UserContext"
 import { logoutUser } from "@/lib/auth"
 
-export function Topbar() {
+type TopbarProps = {
+  onMenuClick?: () => void
+}
+
+export function Topbar({ onMenuClick }: TopbarProps) {
   const router = useRouter()
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const { notifications } = useAppStore()
@@ -31,8 +36,12 @@ export function Topbar() {
   }
 
   return (
-    <div className="glass sticky top-0 z-10 flex h-16 items-center justify-between border-b border-border px-6">
-      <div className="flex items-center gap-4 flex-1">
+    <div className="glass sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border px-4 sm:px-6">
+      <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
+        <Button variant="ghost" size="icon" className="md:hidden" onClick={onMenuClick}>
+          <Bars3Icon className="h-6 w-6" />
+          <span className="sr-only">Open menu</span>
+        </Button>
         <div className="relative max-w-md w-full">
           {/* <MagnifyingGlassIcon className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
           <input
@@ -43,7 +52,7 @@ export function Topbar() {
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3 sm:gap-4">
         <Link href="/notifications" className="relative">
           <BellIcon className="h-6 w-6 text-foreground hover:text-primary transition-colors" />
           {unreadCount > 0 && (
@@ -53,11 +62,11 @@ export function Topbar() {
           )}
         </Link>
 
-        <div className="flex items-center gap-3 border-l border-border pl-4">
-          <Button variant="outline" size="sm" onClick={handleLogout} disabled={isLoggingOut}>
+        <div className="flex items-center gap-2 border-l border-border pl-3 sm:gap-3 sm:pl-4">
+          <Button variant="outline" size="sm" onClick={handleLogout} disabled={isLoggingOut} className="hidden sm:inline-flex">
             {isLoggingOut ? "Signing out..." : "Logout"}
           </Button>
-          <div className="text-right">
+          <div className="hidden text-right md:block">
             <div className="text-sm font-medium text-foreground">
               {loading ? "Loading..." : error ? "Guest User" : user?.username || "Guest User"}
             </div>
@@ -65,7 +74,33 @@ export function Topbar() {
               {loading ? "..." : error ? "guest@example.com" : user?.email || "guest@example.com"}
             </div>
           </div>
-          <UserCircleIcon className="h-9 w-9 text-muted-foreground" />
+
+          <UserCircleIcon className="hidden h-9 w-9 text-muted-foreground sm:block" />
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-9 w-9 p-0 sm:hidden [&_svg]:size-6">
+                <UserCircleIcon className="size-6 text-muted-foreground" />
+                <span className="sr-only">Open profile menu</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium text-foreground">
+                    {loading ? "Loading..." : error ? "Guest User" : user?.username || "Guest User"}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {loading ? "..." : error ? "guest@example.com" : user?.email || "guest@example.com"}
+                  </span>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout} disabled={isLoggingOut}>
+                {isLoggingOut ? "Signing out..." : "Logout"}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </div>

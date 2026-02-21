@@ -20,7 +20,6 @@
 //   UserGroupIcon,
 //   LightBulbIcon,
 //   EyeIcon,
-//   ClockIcon,
 //   CheckCircleIcon,
 //   DocumentIcon,
 // } from "@heroicons/react/24/outline"
@@ -33,9 +32,9 @@
 // interface DomainData {
 //   web: number
 //   ml: number
-//   core: number
-//   systems: number
-//   tools: number
+//   cp: number
+//   appDev: number
+//   cyber: number
 // }
 
 // export default function StudentDashboard() {
@@ -49,8 +48,17 @@
 
 //   // Parser & Data States
 //   const [isUploading, setIsUploading] = useState(false)
-//   const [extractedSkills, setExtractedSkills] = useState<any[] | null>(null)
 //   const [selectedOpportunity, setSelectedOpportunity] = useState<any>(null)
+  
+//   // Single source of truth for displayed skills (Initialized from backend user data)
+//   const [activeSkills, setActiveSkills] = useState<string[]>(currentUser?.skills || [])
+
+//   // Sync active skills if currentUser updates from the store
+//   useEffect(() => {
+//     if (currentUser?.skills) {
+//       setActiveSkills(currentUser.skills)
+//     }
+//   }, [currentUser?.skills])
 
 //   // Resume PDFs State
 //   const [resumes, setResumes] = useState<any[]>([])
@@ -59,42 +67,15 @@
 //   const [showAnonymizedResumes, setShowAnonymizedResumes] = useState(false)
 
 //   // State for the chart - initialized with current user domains
-//   // Normalize old + new domain keys into ONE consistent shape
 //   const normalizedDomains: DomainData = {
 //     web: currentUser?.domains?.web ?? 0,
 //     ml: currentUser?.domains?.ml ?? 0,
-
-//     core:
-//       (currentUser?.domains as any)?.core ??
-//       currentUser?.domains?.cp ??
-//       0,
-
-//     systems:
-//       (currentUser?.domains as any)?.systems ??
-//       currentUser?.domains?.appDev ??
-//       0,
-
-//     tools:
-//       (currentUser?.domains as any)?.tools ??
-//       currentUser?.domains?.cyber ??
-//       0,
+//     cp: (currentUser?.domains as any)?.core ?? currentUser?.domains?.cp ?? 0,
+//     appDev: (currentUser?.domains as any)?.systems ?? currentUser?.domains?.appDev ?? 0,
+//     cyber: (currentUser?.domains as any)?.tools ?? currentUser?.domains?.cyber ?? 0,
 //   }
 
-//   useEffect(() => {
-//     const storedSkills = localStorage.getItem("parsedSkills")
-
-//     if (storedSkills) {
-//       setExtractedSkills(JSON.parse(storedSkills))
-//     }
-//   }, [])
-
-//   const resumeSkillList = extractedSkills
-//   ? normalizeSkillList(extractedSkills.map((s: any) => s.skill))
-//   : []
-//   // State for chart (THIS WAS CORRECT)
-//   const [dynamicDomains, setDynamicDomains] =
-//     useState<DomainData>(normalizedDomains)
-
+//   const [dynamicDomains, setDynamicDomains] = useState<DomainData>(normalizedDomains)
 
 //   // Fetch resumes list from backend
 //   useEffect(() => {
@@ -102,10 +83,12 @@
 //       try {
 //         setLoadingResumes(true)
 //         const anonymizedParam = showAnonymizedResumes ? '?anonymized=true' : ''
-//         const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/resume/list${anonymizedParam}`)
+//         const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/resume/list${anonymizedParam}`, {
+//           credentials: "include"
+//         })
 //         if (response.ok) {
 //           const data = await response.json()
-//           setResumes(data.resumes || [])
+//           setResumes(data.documents || [])
 //         }
 //       } catch (error) {
 //         console.error("Failed to fetch resumes list:", error)
@@ -115,7 +98,6 @@
 //     }
 
 //     if (currentUser) {
-//       // Clear existing PDFs when switching modes
 //       setPdfUrls({})
 //       fetchResumesList()
 //     }
@@ -127,7 +109,8 @@
 //       try {
 //         const anonymizedParam = showAnonymizedResumes ? '?anonymized=true' : ''
 //         const response = await fetch(
-//           `${process.env.NEXT_PUBLIC_BACKEND_URL}/resume/download/${resumeId}${anonymizedParam}`
+//           `${process.env.NEXT_PUBLIC_BACKEND_URL}/resume/download/${resumeId}${anonymizedParam}`,
+//           { credentials: "include" }
 //         )
 //         if (response.ok) {
 //           const blob = await response.blob()
@@ -139,14 +122,12 @@
 //       }
 //     }
 
-//     // Fetch all PDFs once we have the list
 //     resumes.forEach((resume) => {
 //       if (resume.id && !pdfUrls[resume.id]) {
-//         fetchPDFFile(resume.id, resume.filename)
+//         fetchPDFFile(resume.id, resume.name)
 //       }
 //     })
 
-//     // Cleanup blob URLs on unmount
 //     return () => {
 //       Object.values(pdfUrls).forEach((url) => URL.revokeObjectURL(url))
 //     }
@@ -156,45 +137,30 @@
 
 //   const myApplications = applications.filter((app) => app.studentId === currentUser.id)
 
+//   // Use activeSkills for match score calculations
 //   const recommendedOpportunities = opportunities
 //     .map((opp) => ({
 //       ...opp,
-//       matchScore: calculateMatchScore(currentUser.skills, opp.skills),
+//       matchScore: calculateMatchScore(activeSkills, opp.skills),
 //     }))
 //     .sort((a, b) => b.matchScore - a.matchScore)
 //     .slice(0, 3)
 
-//   // 🔥 Global skill-gap summary across ALL opportunities
-// const skillImportance = calculateSkillImportance(opportunities)
+//   // Global skill-gap summary
+//   const skillImportance = calculateSkillImportance(opportunities)
+//   const allOpportunitySkills = opportunities.flatMap((o) => o.skills)
+//   const resumeSkillList = normalizeSkillList(activeSkills)
 
-// const allOpportunitySkills = opportunities.flatMap((o) => o.skills)
-
-// // Matched vs missing across entire opportunity pool
-// const { missing: globalMissingSkills } = analyzeSkillGap(
-//   resumeSkillList,
-//   allOpportunitySkills
-// )
-
-// // Rank missing skills by importance
-// const prioritizedMissingSkills = skillImportance
-//   .filter((s) =>
-//     globalMissingSkills.some(
-//       (m) => m.toLowerCase() === s.skill
-//     )
+//   const { missing: globalMissingSkills } = analyzeSkillGap(
+//     resumeSkillList,
+//     allOpportunitySkills
 //   )
-//   .slice(0, 8) // show top 8 only
 
-//   const allRequiredSkills = new Set(opportunities.flatMap((o) => o.skills))
-//   const missingSkills = Array.from(allRequiredSkills)
-//     .filter(
-//       (skill) =>
-//         !currentUser.skills.some(
-//           (s) => s.toLowerCase().includes(skill.toLowerCase()) || skill.toLowerCase().includes(s.toLowerCase()),
-//         ),
-//     )
+//   const prioritizedMissingSkills = skillImportance
+//     .filter((s) => globalMissingSkills.some((m) => m.toLowerCase() === s.skill))
 //     .slice(0, 8)
 
-//   // --- REAL API CALL TO BACKEND ---
+//   // --- API CALL TO BACKEND ---
 //   const handleResumeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
 //     const file = e.target.files?.[0]
 //     if (!file) return
@@ -205,86 +171,77 @@
 //     formData.append("userid", currentUser?.id || "")
 
 //     try {
+//       // 1. Parse the resume
+//       const parseResponse = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/resumeParser/parse-resume`, {
+//         method: "POST",
+//         credentials: "include",
+//         body: formData,
+//       })
 
-    
-//     const response = await fetch("http://localhost:5000/resumeParser/parse-resume", {
-//       method: "POST",
-//       body: formData,
-//     })
+//       // 2. Upload the file to storage
+//       await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/resume/upload`, {
+//         method: "POST",
+//         credentials: "include",
+//         body: formData,
+//       })
 
-//       console.log("Going for: ", `${process.env.NEXT_PUBLIC_BACKEND_URL}/resume/upload`)
-// //       const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/resume/upload`, {
-// //         method: "POST",
-// //         body: formData,
-// //       })
+//       if (!parseResponse.ok) throw new Error("Connection to parser failed")
 
-
-//       if (!response.ok) throw new Error("Connection to backend failed")
-
-//       const data = await response.json()
+//       const data = await parseResponse.json()
 
 //       if (data.success) {
-//         // 1. Update list of badges
-//         setExtractedSkills(data.skills)
-//         localStorage.setItem(
-//         "parsedSkills",
-//         JSON.stringify(data.skills)
-//       )
-//         // 2. Update Domain Chart (Mapping backend categories to UI bars)
-//         const newChart: DomainData = {
-//           web: 0,
-//           ml: 0,
-//           core: 0,
-//           systems: 0,
-//           tools: 0,
-//         }
+//         // Extract string array of skills from parser output
+//         const extractedSkillStrings = data.skills.map((s: any) => s.skill)
+
+//         // 3. Save to database via your new route
+//         const updateResponse = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/students/update-skills`, {
+//           method: "PUT",
+//           headers: {
+//             "Content-Type": "application/json"
+//           },
+//           body: JSON.stringify({
+//             username: currentUser.id, // Ensure this matches your user_id in DB
+//             skills: extractedSkillStrings
+//           })
+//         })
+
+//         if (!updateResponse.ok) throw new Error("Failed to save skills to database")
+
+//         // 4. Update UI State
+//         setActiveSkills(extractedSkillStrings)
+
+//         // 5. Update Domain Chart (Mapping backend categories to UI bars)
+//         const newChart: DomainData = { web: 0, ml: 0, cp: 0, appDev: 0, cyber: 0 }
 
 //         data.skills.forEach((s: any) => {
 //           const cat = s.category.toLowerCase()
-
-//           if (cat === "frontend" || cat === "backend")
-//             newChart.web += 12
-
-//           if (cat === "ml_ai")
-//             newChart.ml += 20
-
-//           if (cat === "programming_languages")
-//             newChart.core += 15
-
-//           if (cat === "database" || cat === "devops")
-//             newChart.systems += 12
-
-//           if (cat === "tools_and_others")
-//             newChart.tools += 10
+//           if (cat === "frontend" || cat === "backend") newChart.web += 12
+//           if (cat === "ml_ai") newChart.ml += 20
+//           if (cat === "programming_languages") newChart.cp += 15
+//           if (cat === "database" || cat === "devops") newChart.appDev += 12
+//           if (cat === "tools_and_others") newChart.cyber += 10
 //         })
-
 
 //         setDynamicDomains({
 //           web: Math.min(newChart.web, 100),
 //           ml: Math.min(newChart.ml, 100),
-//           core: Math.min(newChart.core, 100),
-//           systems: Math.min(newChart.systems, 100),
-//           tools: Math.min(newChart.tools, 100),
+//           cp: Math.min(newChart.cp, 100),
+//           appDev: Math.min(newChart.appDev, 100),
+//           cyber: Math.min(newChart.cyber, 100),
 //         })
-
 
 //         setShowResumeUpload(false)
 //       }
 //     } catch (error) {
 //       console.error("Upload error:", error)
-//       alert("Failed to connect to Parser. Ensure backend is running on port 5000.")
+//       alert("Failed to process resume or save skills.")
 //     } finally {
 //       setIsUploading(false)
 //     }
 //   }
 
-//   const handleGenerateTeam = () => {
-//     const recommendations = generateTeamRecommendations(currentUser, students)
-//     setTeamRecommendations(recommendations)
-//   }
-
 //   const handleDownloadResume = (e: React.MouseEvent, pdfUrl: string, filename: string) => {
-//     e.stopPropagation() // Prevent opening in new tab
+//     e.stopPropagation()
 //     const link = document.createElement('a')
 //     link.href = pdfUrl
 //     link.download = filename
@@ -318,8 +275,8 @@
 //         />
 //         <StatCard
 //           title="Skills"
-//           value={extractedSkills ? extractedSkills.length : currentUser.skills.length}
-//           description={extractedSkills ? "From Resume" : "From Profile"}
+//           value={activeSkills.length}
+//           description="From Profile"
 //           icon={<LightBulbIcon className="h-6 w-6" />}
 //         />
 //         <StatCard
@@ -330,16 +287,16 @@
 //         />
 //       </div>
 
-//       {/* EXTRACTED SKILLS SECTION - Shows only after successful parse */}
-//       {extractedSkills && (
+//       {/* SKILLS SECTION */}
+//       {activeSkills.length > 0 && (
 //         <Card className="glass rounded-2xl p-6 border-t-4 border-primary animate-in fade-in slide-in-from-top-4 duration-500">
 //           <h2 className="mb-4 text-xl font-semibold text-foreground flex items-center">
 //             <CheckCircleIcon className="h-6 w-6 mr-2 text-primary" />
-//             Skills Extracted from Resume
+//             Your Skills
 //           </h2>
 //           <div className="flex flex-wrap gap-2">
-//             {extractedSkills.map((s, i) => (
-//               <SkillBadge key={i} skill={s.skill} variant="matched" />
+//             {activeSkills.map((skill, i) => (
+//               <SkillBadge key={i} skill={skill} variant="matched" />
 //             ))}
 //           </div>
 //         </Card>
@@ -350,7 +307,7 @@
 //         {/* Domain Ranking */}
 //         <Card className="glass lg:col-span-2 rounded-2xl p-6">
 //           <h2 className="mb-4 text-xl font-semibold text-foreground">Domain Strength Analysis</h2>
-//           <div className="h-72">
+//           <div className="h-72 w-full">
 //             <DomainChart domains={dynamicDomains} />
 //           </div>
 //         </Card>
@@ -367,7 +324,7 @@
 //               <EyeIcon className="mr-2 h-5 w-5" />
 //               Preview Anonymous Resume
 //             </Button>
-//             <Link href="/team-builder">
+//             <Link href="/team-builder" className="block">
 //               <Button className="w-full justify-start bg-transparent" variant="outline">
 //                 <UserGroupIcon className="mr-2 h-5 w-5" />
 //                 Find Team Members
@@ -381,64 +338,32 @@
 //         </Card>
 //       </div>
 
-//       {/* Recommended Opportunities */}
-//       <Card className="glass rounded-2xl p-6">
-//         <div className="mb-4 flex items-center justify-between">
-//           <h2 className="text-xl font-semibold text-foreground">Recommended For You</h2>
-//           <Link href="/recommendations">
-//             <Button variant="ghost" size="sm">View All</Button>
-//           </Link>
-//         </div>
-//         <div className="grid gap-4 md:grid-cols-3">
-//           {recommendedOpportunities.map((opp) => (
-//             <div
-//               key={opp.id}
-//               className="glass rounded-xl border border-border p-4 transition-all hover:shadow-lg cursor-pointer"
-//               onClick={() => {
-//                 setSelectedOpportunity(opp)
-//                 setShowMatchAnalysis(true)
-//               }}
-//             >
-//               <div className="mb-3 flex items-start justify-between">
-//                 <div className="flex-1">
-//                   <h3 className="font-semibold text-foreground">{opp.title}</h3>
-//                   <p className="text-sm text-muted-foreground">{opp.company}</p>
-//                 </div>
-//                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-//                   <span className="text-sm font-bold text-primary">{opp.matchScore}%</span>
-//                 </div>
-//               </div>
-//             </div>
-//           ))}
-//         </div>
-//       </Card>
-
 //       {/* Missing Skills */}
-// <Card className="glass rounded-2xl p-6">
-//   <h2 className="mb-2 text-xl font-semibold text-foreground">
-//     Skill Gap Analysis
-//   </h2>
+//       <Card className="glass rounded-2xl p-6">
+//         <h2 className="mb-2 text-xl font-semibold text-foreground">
+//           Skill Gap Analysis
+//         </h2>
 
-//   <p className="mb-4 text-sm text-muted-foreground">
-//     Based on current opportunities and your resume, focus on improving these high-impact skills:
-//   </p>
+//         <p className="mb-4 text-sm text-muted-foreground">
+//           Based on current opportunities and your resume, focus on improving these high-impact skills:
+//         </p>
 
-//   {prioritizedMissingSkills.length > 0 ? (
-//     <div className="flex flex-wrap gap-2">
-//       {prioritizedMissingSkills.map((s) => (
-//         <SkillBadge
-//           key={s.skill}
-//           skill={s.skill}
-//           variant="missing"
-//         />
-//       ))}
-//     </div>
-//   ) : (
-//     <p className="text-sm text-green-600 font-medium">
-//       🎉 Great job! You meet the key skill requirements for current opportunities.
-//     </p>
-//   )}
-// </Card>
+//         {prioritizedMissingSkills.length > 0 ? (
+//           <div className="flex flex-wrap gap-2">
+//             {prioritizedMissingSkills.map((s) => (
+//               <SkillBadge
+//                 key={s.skill}
+//                 skill={s.skill}
+//                 variant="missing"
+//               />
+//             ))}
+//           </div>
+//         ) : (
+//           <p className="text-sm text-green-600 font-medium">
+//             🎉 Great job! You meet the key skill requirements for current opportunities.
+//           </p>
+//         )}
+//       </Card>
 
 //       {/* Resume Section */}
 //       <Card className="glass rounded-2xl p-6">
@@ -449,8 +374,8 @@
 //           </h2>
 //           <div className="flex items-center gap-2">
 //             <span className="text-sm text-muted-foreground">Anonymized</span>
-//             <Switch 
-//               checked={showAnonymizedResumes} 
+//             <Switch
+//               checked={showAnonymizedResumes}
 //               onCheckedChange={setShowAnonymizedResumes}
 //             />
 //           </div>
@@ -492,16 +417,16 @@
 //                             <iframe
 //                               src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
 //                               className="absolute inset-0 pointer-events-none border-0"
-//                               style={{ 
+//                               style={{
 //                                 width: 'calc(100% + 20px)',
 //                                 height: 'calc(100% + 20px)',
 //                                 overflow: 'hidden'
 //                               }}
-//                               title={`Preview of ${resume.filename}`}
+//                               title={`Preview of ${resume.name}`}
 //                             />
 //                           </div>
 //                           <button
-//                             onClick={(e) => handleDownloadResume(e, pdfUrl, resume.filename)}
+//                             onClick={(e) => handleDownloadResume(e, pdfUrl, resume.name)}
 //                             className="absolute top-2 right-2 p-2 rounded-lg bg-primary/90 text-primary-foreground opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-primary z-10"
 //                             title="Download resume"
 //                           >
@@ -511,11 +436,11 @@
 //                       )}
 //                     </div>
 //                     <div className="p-3">
-//                       <p className="text-sm font-medium text-foreground truncate" title={resume.filename || `Resume ${index + 1}`}>
-//                         {resume.filename || `Resume ${index + 1}`}
+//                       <p className="text-sm font-medium text-foreground truncate" title={resume.name || `Resume ${index + 1}`}>
+//                         {resume.name || `Resume ${index + 1}`}
 //                       </p>
 //                       <p className="text-xs text-muted-foreground mt-1">
-//                         {resume.uploadDate ? new Date(resume.uploadDate).toLocaleDateString() : 'PDF Document'}
+//                         {resume.created_at ? new Date(resume.created_at).toLocaleDateString() : 'PDF Document'}
 //                       </p>
 //                     </div>
 //                   </div>
@@ -559,7 +484,7 @@
 //               />
 //               <label htmlFor="resume-upload" className="cursor-pointer">
 //                 <ArrowUpTrayIcon className="mx-auto h-12 w-12 text-muted-foreground" />
-//                 <p className="mt-2 text-sm text-foreground">{isUploading ? "Extracting Skills..." : "Click to upload"}</p>
+//                 <p className="mt-2 text-sm text-foreground">{isUploading ? "Processing & Saving Skills..." : "Click to upload"}</p>
 //               </label>
 //             </div>
 //           </div>
@@ -582,7 +507,7 @@
 //               <div>
 //                 <h4 className="mb-2 text-sm font-medium">Matched Skills:</h4>
 //                 <div className="flex flex-wrap gap-2">
-//                   {currentUser.skills.filter(skill => selectedOpportunity.skills.some((req: string) => skill.toLowerCase().includes(req.toLowerCase()))).map(skill => (
+//                   {activeSkills.filter(skill => selectedOpportunity.skills.some((req: string) => skill.toLowerCase().includes(req.toLowerCase()))).map(skill => (
 //                     <SkillBadge key={skill} skill={skill} variant="matched" />
 //                   ))}
 //                 </div>
@@ -607,7 +532,7 @@
 //             <div>
 //               <h4 className="mb-2 font-medium">Skills</h4>
 //               <div className="flex flex-wrap gap-2">
-//                 {currentUser.skills.map(skill => <SkillBadge key={skill} skill={skill} />)}
+//                 {activeSkills.map(skill => <SkillBadge key={skill} skill={skill} />)}
 //               </div>
 //             </div>
 //             <div>
@@ -663,7 +588,6 @@ import {
   UserGroupIcon,
   LightBulbIcon,
   EyeIcon,
-  ClockIcon,
   CheckCircleIcon,
   DocumentIcon,
 } from "@heroicons/react/24/outline"
@@ -672,6 +596,7 @@ import Link from "next/link"
 import { analyzeSkillGap } from "@/lib/skill-gap-analysis/gap"
 import { calculateSkillImportance } from "@/lib/skill-gap-analysis/importance"
 import { normalizeSkillList } from "@/lib/skill-gap-analysis/normalize"
+import { useUser } from "@/contexts/UserContext"
 
 interface DomainData {
   web: number
@@ -683,7 +608,7 @@ interface DomainData {
 
 export default function StudentDashboard() {
   const { currentUser, opportunities, applications, students, setTeamRecommendations } = useAppStore()
-
+  const { user, error, refreshUser } = useUser();
   // Dialog States
   const [showResumeUpload, setShowResumeUpload] = useState(false)
   const [showMatchAnalysis, setShowMatchAnalysis] = useState(false)
@@ -692,8 +617,41 @@ export default function StudentDashboard() {
 
   // Parser & Data States
   const [isUploading, setIsUploading] = useState(false)
-  const [extractedSkills, setExtractedSkills] = useState<any[] | null>(null)
   const [selectedOpportunity, setSelectedOpportunity] = useState<any>(null)
+  
+  // Single source of truth for displayed skills (Initializes from store, but immediately overwritten by GET fetch)
+  const [activeSkills, setActiveSkills] = useState<string[]>(currentUser?.skills || [])
+
+  // --- 1. GET SKILLS FROM BACKEND ON LOAD ---
+  useEffect(() => {
+    const fetchSkills = async () => {
+      if (!currentUser?.id) return;
+      
+      try {
+        // Adjust this URL to match the exact path of your new GET route
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/students/get-skills`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            username: user?.id,
+          })
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.skills) {
+            setActiveSkills(data.skills);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch fresh skills from database:", error);
+      }
+    };
+
+    fetchSkills();
+  }, [currentUser?.id]);
 
   // Resume PDFs State
   const [resumes, setResumes] = useState<any[]>([])
@@ -702,42 +660,15 @@ export default function StudentDashboard() {
   const [showAnonymizedResumes, setShowAnonymizedResumes] = useState(false)
 
   // State for the chart - initialized with current user domains
-  // Normalize old + new domain keys into ONE consistent shape
   const normalizedDomains: DomainData = {
     web: currentUser?.domains?.web ?? 0,
     ml: currentUser?.domains?.ml ?? 0,
-
-    cp:
-      (currentUser?.domains as any)?.core ??
-      currentUser?.domains?.cp ??
-      0,
-
-    appDev:
-      (currentUser?.domains as any)?.systems ??
-      currentUser?.domains?.appDev ??
-      0,
-
-    cyber:
-      (currentUser?.domains as any)?.tools ??
-      currentUser?.domains?.cyber ??
-      0,
+    cp: (currentUser?.domains as any)?.core ?? currentUser?.domains?.cp ?? 0,
+    appDev: (currentUser?.domains as any)?.systems ?? currentUser?.domains?.appDev ?? 0,
+    cyber: (currentUser?.domains as any)?.tools ?? currentUser?.domains?.cyber ?? 0,
   }
 
-  useEffect(() => {
-    const storedSkills = localStorage.getItem("parsedSkills")
-
-    if (storedSkills) {
-      setExtractedSkills(JSON.parse(storedSkills))
-    }
-  }, [])
-
-  const resumeSkillList = extractedSkills
-    ? normalizeSkillList(extractedSkills.map((s: any) => s.skill))
-    : []
-  // State for chart (THIS WAS CORRECT)
-  const [dynamicDomains, setDynamicDomains] =
-    useState<DomainData>(normalizedDomains)
-
+  const [dynamicDomains, setDynamicDomains] = useState<DomainData>(normalizedDomains)
 
   // Fetch resumes list from backend
   useEffect(() => {
@@ -760,7 +691,6 @@ export default function StudentDashboard() {
     }
 
     if (currentUser) {
-      // Clear existing PDFs when switching modes
       setPdfUrls({})
       fetchResumesList()
     }
@@ -785,14 +715,12 @@ export default function StudentDashboard() {
       }
     }
 
-    // Fetch all PDFs once we have the list
     resumes.forEach((resume) => {
       if (resume.id && !pdfUrls[resume.id]) {
         fetchPDFFile(resume.id, resume.name)
       }
     })
 
-    // Cleanup blob URLs on unmount
     return () => {
       Object.values(pdfUrls).forEach((url) => URL.revokeObjectURL(url))
     }
@@ -802,45 +730,30 @@ export default function StudentDashboard() {
 
   const myApplications = applications.filter((app) => app.studentId === currentUser.id)
 
+  // Use activeSkills (from backend) for match score calculations
   const recommendedOpportunities = opportunities
     .map((opp) => ({
       ...opp,
-      matchScore: calculateMatchScore(currentUser.skills, opp.skills),
+      matchScore: calculateMatchScore(activeSkills, opp.skills),
     }))
     .sort((a, b) => b.matchScore - a.matchScore)
     .slice(0, 3)
 
-  // 🔥 Global skill-gap summary across ALL opportunities
-    const skillImportance = calculateSkillImportance(opportunities)
+  // Global skill-gap summary
+  const skillImportance = calculateSkillImportance(opportunities)
+  const allOpportunitySkills = opportunities.flatMap((o) => o.skills)
+  const resumeSkillList = normalizeSkillList(activeSkills)
 
-    const allOpportunitySkills = opportunities.flatMap((o) => o.skills)
+  const { missing: globalMissingSkills } = analyzeSkillGap(
+    resumeSkillList,
+    allOpportunitySkills
+  )
 
-    // Matched vs missing across entire opportunity pool
-    const { missing: globalMissingSkills } = analyzeSkillGap(
-      resumeSkillList,
-      allOpportunitySkills
-    )
-
-    // Rank missing skills by importance
-    const prioritizedMissingSkills = skillImportance
-      .filter((s) =>
-        globalMissingSkills.some(
-          (m) => m.toLowerCase() === s.skill
-        )
-      )
-      .slice(0, 8) // show top 8 only
-
-  const allRequiredSkills = new Set(opportunities.flatMap((o) => o.skills))
-  const missingSkills = Array.from(allRequiredSkills)
-    .filter(
-      (skill) =>
-        !currentUser.skills.some(
-          (s) => s.toLowerCase().includes(skill.toLowerCase()) || skill.toLowerCase().includes(s.toLowerCase()),
-        ),
-    )
+  const prioritizedMissingSkills = skillImportance
+    .filter((s) => globalMissingSkills.some((m) => m.toLowerCase() === s.skill))
     .slice(0, 8)
 
-  // --- REAL API CALL TO BACKEND ---
+  // --- 2. UPDATE SKILLS IN BACKEND ON UPLOAD ---
   const handleResumeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -851,61 +764,56 @@ export default function StudentDashboard() {
     formData.append("userid", currentUser?.id || "")
 
     try {
-
-
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/resumeParser/parse-resume`, {
+      // 1. Parse the resume
+      const parseResponse = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/resumeParser/parse-resume`, {
         method: "POST",
         credentials: "include",
         body: formData,
       })
 
-      console.log("Going for: ", `${process.env.NEXT_PUBLIC_BACKEND_URL}/resume/upload`)
-      const uploadResponse = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/resume/upload`, {
+      // 2. Upload the file to storage
+      await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/resume/upload`, {
         method: "POST",
         credentials: "include",
         body: formData,
       })
 
+      if (!parseResponse.ok) throw new Error("Connection to parser failed")
 
-      if (!response.ok) throw new Error("Connection to backend failed")
-
-      const data = await response.json()
+      const data = await parseResponse.json()
 
       if (data.success) {
-        // 1. Update list of badges
-        setExtractedSkills(data.skills)
-        localStorage.setItem(
-          "parsedSkills",
-          JSON.stringify(data.skills)
-        )
-        // 2. Update Domain Chart (Mapping backend categories to UI bars)
-        const newChart: DomainData = {
-          web: 0,
-          ml: 0,
-          cp: 0,
-          appDev: 0,
-          cyber: 0,
-        }
+        // Extract string array of skills from parser output
+        const extractedSkillStrings = data.skills.map((s: any) => s.skill)
+
+        // 3. Save to database via your PUT route
+        const updateResponse = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/students/update-skills`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            username: user?.id, 
+            skills: extractedSkillStrings
+          })
+        })
+
+        if (!updateResponse.ok) throw new Error("Failed to save skills to database")
+
+        // 4. Update UI State so it re-renders immediately
+        setActiveSkills(extractedSkillStrings)
+
+        // 5. Update Domain Chart (Mapping backend categories to UI bars)
+        const newChart: DomainData = { web: 0, ml: 0, cp: 0, appDev: 0, cyber: 0 }
 
         data.skills.forEach((s: any) => {
           const cat = s.category.toLowerCase()
-
-          if (cat === "frontend" || cat === "backend")
-            newChart.web += 12
-
-          if (cat === "ml_ai")
-            newChart.ml += 20
-
-          if (cat === "programming_languages")
-            newChart.cp += 15
-
-          if (cat === "database" || cat === "devops")
-            newChart.appDev += 12
-
-          if (cat === "tools_and_others")
-            newChart.cyber += 10
+          if (cat === "frontend" || cat === "backend") newChart.web += 12
+          if (cat === "ml_ai") newChart.ml += 20
+          if (cat === "programming_languages") newChart.cp += 15
+          if (cat === "database" || cat === "devops") newChart.appDev += 12
+          if (cat === "tools_and_others") newChart.cyber += 10
         })
-
 
         setDynamicDomains({
           web: Math.min(newChart.web, 100),
@@ -915,24 +823,18 @@ export default function StudentDashboard() {
           cyber: Math.min(newChart.cyber, 100),
         })
 
-
         setShowResumeUpload(false)
       }
     } catch (error) {
       console.error("Upload error:", error)
-      alert("Failed to connect to Parser. Ensure backend is running on port 5000.")
+      alert("Failed to process resume or save skills.")
     } finally {
       setIsUploading(false)
     }
   }
 
-  const handleGenerateTeam = () => {
-    const recommendations = generateTeamRecommendations(currentUser, students)
-    setTeamRecommendations(recommendations)
-  }
-
   const handleDownloadResume = (e: React.MouseEvent, pdfUrl: string, filename: string) => {
-    e.stopPropagation() // Prevent opening in new tab
+    e.stopPropagation()
     const link = document.createElement('a')
     link.href = pdfUrl
     link.download = filename
@@ -966,8 +868,8 @@ export default function StudentDashboard() {
         />
         <StatCard
           title="Skills"
-          value={extractedSkills ? extractedSkills.length : currentUser.skills.length}
-          description={extractedSkills ? "From Resume" : "From Profile"}
+          value={activeSkills.length}
+          description="From Profile"
           icon={<LightBulbIcon className="h-6 w-6" />}
         />
         <StatCard
@@ -978,16 +880,16 @@ export default function StudentDashboard() {
         />
       </div>
 
-      {/* EXTRACTED SKILLS SECTION - Shows only after successful parse */}
-      {extractedSkills && (
+      {/* SKILLS SECTION - Rendered from the database */}
+      {activeSkills.length > 0 && (
         <Card className="glass rounded-2xl p-6 border-t-4 border-primary animate-in fade-in slide-in-from-top-4 duration-500">
           <h2 className="mb-4 text-xl font-semibold text-foreground flex items-center">
             <CheckCircleIcon className="h-6 w-6 mr-2 text-primary" />
-            Skills Extracted from Resume
+            Your Skills
           </h2>
           <div className="flex flex-wrap gap-2">
-            {extractedSkills.map((s, i) => (
-              <SkillBadge key={i} skill={s.skill} variant="matched" />
+            {activeSkills.map((skill, i) => (
+              <SkillBadge key={i} skill={skill} variant="matched" />
             ))}
           </div>
         </Card>
@@ -1028,38 +930,6 @@ export default function StudentDashboard() {
           </div>
         </Card>
       </div>
-
-      {/* Recommended Opportunities */}
-      {/* <Card className="glass rounded-2xl p-6">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-foreground">Recommended For You</h2>
-          <Link href="/recommendations">
-            <Button variant="ghost" size="sm">View All</Button>
-          </Link>
-        </div>
-        <div className="grid gap-4 md:grid-cols-3">
-          {recommendedOpportunities.map((opp) => (
-            <div
-              key={opp.id}
-              className="glass rounded-xl border border-border p-4 transition-all hover:shadow-lg cursor-pointer"
-              onClick={() => {
-                setSelectedOpportunity(opp)
-                setShowMatchAnalysis(true)
-              }}
-            >
-              <div className="mb-3 flex items-start justify-between">
-                <div className="flex-1">
-                  <h3 className="font-semibold text-foreground">{opp.title}</h3>
-                  <p className="text-sm text-muted-foreground">{opp.company}</p>
-                </div>
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                  <span className="text-sm font-bold text-primary">{opp.matchScore}%</span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </Card> */}
 
       {/* Missing Skills */}
       <Card className="glass rounded-2xl p-6">
@@ -1207,7 +1077,7 @@ export default function StudentDashboard() {
               />
               <label htmlFor="resume-upload" className="cursor-pointer">
                 <ArrowUpTrayIcon className="mx-auto h-12 w-12 text-muted-foreground" />
-                <p className="mt-2 text-sm text-foreground">{isUploading ? "Extracting Skills..." : "Click to upload"}</p>
+                <p className="mt-2 text-sm text-foreground">{isUploading ? "Processing & Saving Skills..." : "Click to upload"}</p>
               </label>
             </div>
           </div>
@@ -1230,7 +1100,7 @@ export default function StudentDashboard() {
               <div>
                 <h4 className="mb-2 text-sm font-medium">Matched Skills:</h4>
                 <div className="flex flex-wrap gap-2">
-                  {currentUser.skills.filter(skill => selectedOpportunity.skills.some((req: string) => skill.toLowerCase().includes(req.toLowerCase()))).map(skill => (
+                  {activeSkills.filter(skill => selectedOpportunity.skills.some((req: string) => skill.toLowerCase().includes(req.toLowerCase()))).map(skill => (
                     <SkillBadge key={skill} skill={skill} variant="matched" />
                   ))}
                 </div>
@@ -1255,7 +1125,7 @@ export default function StudentDashboard() {
             <div>
               <h4 className="mb-2 font-medium">Skills</h4>
               <div className="flex flex-wrap gap-2">
-                {currentUser.skills.map(skill => <SkillBadge key={skill} skill={skill} />)}
+                {activeSkills.map(skill => <SkillBadge key={skill} skill={skill} />)}
               </div>
             </div>
             <div>

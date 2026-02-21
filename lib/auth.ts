@@ -29,6 +29,11 @@ interface VerifyResponse extends TokenPair {
   user: AuthUser
 }
 
+interface VerifyInviteResponse extends TokenPair {
+  message: string
+  user: AuthUser
+}
+
 interface RefreshResponse extends TokenPair {
   message: string
 }
@@ -40,6 +45,13 @@ interface RequestMagicLinkResponse {
 
 interface MeResponse {
   user: AuthUser
+}
+
+interface SendInvitesResponse {
+  message: string
+  sent: number
+  failed: number
+  results?: Array<{ email: string; status: string; reason?: string | null }>
 }
 
 const ACCESS_TOKEN_KEY = "auth_access_token"
@@ -156,6 +168,14 @@ export async function verifyMagicLink(token: string) {
   })
 }
 
+export async function verifyInviteMagicLink(token: string) {
+  return request<VerifyInviteResponse>("/auth/invite-magic/verify", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token }),
+  })
+}
+
 export async function loginUser(input: { identifier: string; password: string }) {
   return request<LoginResponse>("/auth/login", {
     method: "POST",
@@ -231,6 +251,29 @@ export async function getCurrentUser() {
   }
 
   const payload = await safeJson<MeResponse>(response)
+  if (!payload) {
+    throw new ApiError("Invalid server response", response.status)
+  }
+
+  return payload
+}
+
+export async function sendInviteMagicLinks(input: {
+  emails: string[]
+  custom_message?: string
+  expires_at: string
+}) {
+  const response = await authFetch("/invites/magic/send", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  })
+
+  if (!response.ok) {
+    throw await parseApiError(response)
+  }
+
+  const payload = await safeJson<SendInvitesResponse>(response)
   if (!payload) {
     throw new ApiError("Invalid server response", response.status)
   }

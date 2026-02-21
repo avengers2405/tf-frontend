@@ -1,64 +1,97 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useAppStore } from "@/lib/store"
 import { StatCard } from "@/components/ui/stat-card"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { SkillBadge } from "@/components/ui/skill-badge"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { UserGroupIcon, BriefcaseIcon, StarIcon, KeyIcon } from "@heroicons/react/24/outline"
+import { UserGroupIcon, BriefcaseIcon, KeyIcon, DocumentTextIcon } from "@heroicons/react/24/outline"
 import Link from "next/link"
+import MiniSearch from "minisearch"
 
 export default function RecruiterDashboard() {
   const { students, opportunities } = useAppStore()
-  const [inviteToken, setInviteToken] = useState("")
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [showInviteDialog, setShowInviteDialog] = useState(!isAuthenticated)
+  
+  // State for API data
+  const [resumes, setResumes] = useState([])
+  const [isLoading, setIsLoading] = useState(false)
+  
+  // New state for search query
+  const [searchQuery, setSearchQuery] = useState("")
 
-  const handleInviteSubmit = () => {
-    if (inviteToken === "RECRUIT2025" || inviteToken.length > 5) {
-      setIsAuthenticated(true)
-      setShowInviteDialog(false)
-    }
-  }
+  // Fetch data directly for authenticated recruiter sessions
+  useEffect(() => {
+    setIsLoading(true)
+    fetch("http://localhost:5000/resume/listall")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          // Sort by newest first
+          const sortedDocs = data.documents.sort(
+            (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          )
+          setResumes(sortedDocs)
+        }
+      })
+      .catch((error) => console.error("Error fetching resumes:", error))
+      .finally(() => setIsLoading(false))
+  }, [])
 
-  if (!isAuthenticated) {
-    return (
-      <Dialog open={showInviteDialog} onOpenChange={() => {}}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Recruiter Access</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Enter your invite token to access the recruiter dashboard and anonymous student database.
-            </p>
-            <div className="space-y-2">
-              <Input
-                placeholder="Enter invite token"
-                value={inviteToken}
-                onChange={(e) => setInviteToken(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleInviteSubmit()}
-              />
-              <p className="text-xs text-muted-foreground">
-                Demo token: <code className="rounded bg-secondary px-1">RECRUIT2025</code>
-              </p>
-            </div>
-            <Button onClick={handleInviteSubmit} className="w-full">
-              <KeyIcon className="mr-2 h-4 w-4" />
-              Access Dashboard
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    )
-  }
+  // --- MINISEARCH OPTIMIZATION LOGIC ---
 
-  // Calculate some stats
+  // 1. Initialize and memoize MiniSearch index
+  const miniSearch = useMemo(() => {
+    const ms = new MiniSearch({
+      fields: ['skillsText', 'name', 'student_registration_number'], // Fields to search
+      storeFields: ['id'], // Fields to return in results
+      idField: 'id'
+    })
+
+    // Prepare data: Join skills array into a single searchable string
+    const preparedDocs = resumes.map(doc => ({
+      ...doc,
+      skillsText: doc.skills ? doc.skills.join(' ') : ''
+    }))
+
+    ms.addAll(preparedDocs)
+    return ms
+  }, [resumes])
+
+  // 2. Execute search when query changes (AND logic first, then OR logic)
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim()) return []
+
+    // Search with AND logic (must contain ALL terms)
+    const andResults = miniSearch.search(searchQuery, {
+      prefix: true, // Allows partial matching (e.g., "spr" matches "springboot")
+      combineWith: 'AND',
+      boost: { skillsText: 2 } // Prioritize matches found in skills
+    })
+
+    // Search with OR logic (must contain AT LEAST ONE term)
+    const orResults = miniSearch.search(searchQuery, {
+      prefix: true,
+      combineWith: 'OR',
+      boost: { skillsText: 2 }
+    })
+
+    // Combine them: AND results go first, OR results appended without duplicates
+    const andIds = new Set(andResults.map(r => r.id))
+    const combinedIds = [
+      ...andResults.map(r => r.id),
+      ...orResults.map(r => r.id).filter(id => !andIds.has(id))
+    ]
+
+    // Map the combined IDs back to the full resume objects
+    return combinedIds.map(id => resumes.find(r => r.id === id)).filter(Boolean)
+  }, [searchQuery, miniSearch, resumes])
+
   const topSkills = ["React", "Python", "Machine Learning", "Node.js", "Android"]
-  const avgCGPA = (students.reduce((sum, s) => sum + s.cgpa, 0) / students.length).toFixed(2)
+  const uniqueStudents = new Set(resumes.map(doc => doc.student_registration_number)).size
+  
+  // Determine what to display
+  const displayedResumes = searchQuery.trim() ? searchResults : resumes.slice(0, 6)
 
   return (
     <div className="space-y-6">
@@ -67,28 +100,24 @@ export default function RecruiterDashboard() {
           <h1 className="text-3xl font-bold text-foreground">Recruiter Dashboard</h1>
           <p className="mt-1 text-muted-foreground">Discover top talent from our campus</p>
         </div>
-        <Button variant="outline" onClick={() => setIsAuthenticated(false)}>
-          <KeyIcon className="mr-2 h-4 w-4" />
-          Change Token
-        </Button>
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
         <StatCard
-          title="Available Candidates"
-          value={students.length}
-          description="Anonymous profiles"
+          title="Active Candidates"
+          value={uniqueStudents}
+          description="Unique student profiles"
           icon={<UserGroupIcon className="h-6 w-6" />}
         />
         <StatCard
-          title="Average CGPA"
-          value={avgCGPA}
-          description="Across all departments"
-          icon={<StarIcon className="h-6 w-6" />}
+          title="Total Resumes"
+          value={resumes.length}
+          description="Uploaded to database"
+          icon={<DocumentTextIcon className="h-6 w-6" />}
         />
         <StatCard
           title="Active Opportunities"
-          value={opportunities.length}
+          value={opportunities?.length || 0}
           description="Posted by companies"
           icon={<BriefcaseIcon className="h-6 w-6" />}
         />
@@ -128,8 +157,8 @@ export default function RecruiterDashboard() {
         <h2 className="mb-4 text-xl font-semibold text-foreground">Top Candidate Skills</h2>
         <div className="grid gap-4 md:grid-cols-5">
           {topSkills.map((skill) => {
-            const count = students.filter((s) =>
-              s.skills.some((sk) => sk.toLowerCase().includes(skill.toLowerCase())),
+            const count = resumes.filter((doc) =>
+              doc.skills && doc.skills.some((sk) => sk.toLowerCase().includes(skill.toLowerCase())),
             ).length
             return (
               <div key={skill} className="text-center rounded-lg border border-border p-4">
@@ -142,33 +171,89 @@ export default function RecruiterDashboard() {
       </Card>
 
       <Card className="glass rounded-2xl p-6">
-        <h2 className="mb-4 text-xl font-semibold text-foreground">Featured Candidates</h2>
-        <p className="mb-4 text-sm text-muted-foreground">High-performing students with diverse skill sets</p>
-        <div className="grid gap-4 md:grid-cols-2">
-          {students.slice(0, 4).map((student) => (
-            <div key={student.id} className="rounded-lg border border-border p-4">
-              <div className="mb-3 flex items-start justify-between">
-                <div>
-                  <h3 className="font-semibold text-foreground">Candidate {student.id}</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {student.department} • Year {student.year}
-                  </p>
-                  <p className="text-sm font-medium text-primary">CGPA: {student.cgpa}</p>
-                </div>
-              </div>
-              <div className="mb-3 flex flex-wrap gap-1">
-                {student.skills.slice(0, 4).map((skill) => (
-                  <SkillBadge key={skill} skill={skill} />
-                ))}
-              </div>
-              <Button size="sm" variant="outline" asChild className="w-full bg-transparent">
-                <Link href="/resumes">View Full Profile</Link>
-              </Button>
-            </div>
-          ))}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+          <div>
+            <h2 className="text-xl font-semibold text-foreground">Candidate Database</h2>
+            <p className="text-sm text-muted-foreground">
+              {searchQuery.trim() ? "Search Results" : "Latest candidate submissions"}
+            </p>
+          </div>
         </div>
-      </Card>
+        
+        {/* NEW SEARCH BAR SECTION */}
+        <div className="mb-6">
+          <Input
+            type="text"
+            placeholder="Search by skills, name, or ID (e.g. Java Kotlin Springboot)"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full md:max-w-xl border-primary/20 focus-visible:ring-primary"
+          />
+          {searchQuery.trim() && (
+            <p className="mt-2 text-sm text-muted-foreground">
+              Showing {searchResults.length} candidates matching your search.
+            </p>
+          )}
+        </div>
 
+        {isLoading ? (
+          <div className="flex justify-center p-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        ) : displayedResumes.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-muted-foreground">
+              {searchQuery.trim() ? "No resumes found matching those terms." : "No resumes available."}
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2">
+            {displayedResumes.map((doc) => (
+              <div key={doc.id} className="rounded-lg border border-border p-4">
+                <div className="mb-3 flex items-start justify-between">
+                  <div className="w-full">
+                    <h3 className="font-semibold text-foreground uppercase">
+                      ID: {doc.student_registration_number}
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Uploaded: {new Date(doc.created_at).toLocaleDateString()}
+                    </p>
+                    <p className="text-xs text-muted-foreground/60 mt-1 truncate max-w-full">
+                      {doc.name}
+                    </p>
+    
+                    {doc.skills && doc.skills.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-1">
+                        {doc.skills.slice(0, 4).map((skill, idx) => (
+                          <span key={idx} className="inline-flex items-center rounded-md bg-secondary/50 px-2 py-0.5 text-xs font-medium text-secondary-foreground border border-border">
+                            {skill}
+                          </span>
+                        ))}
+                        {doc.skills.length > 4 && (
+                          <span className="text-xs text-muted-foreground self-center ml-1">
+                            +{doc.skills.length - 4} more
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <Button size="sm" variant="outline" asChild className="w-full bg-transparent mt-2">
+                  <a 
+                    href={doc.document_url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                  >
+                    View Resume PDF
+                  </a>
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+      
+      {/* Read-Only Access Card remains the same... */}
       <Card className="glass rounded-2xl p-6 bg-primary/5 border-primary/20">
         <div className="flex items-start gap-4">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">

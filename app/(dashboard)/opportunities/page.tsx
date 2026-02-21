@@ -819,7 +819,7 @@ export default function OpportunitiesPage() {
   const [search, setSearch] = useState("")
   const [typeFilter, setTypeFilter] = useState<string>("all")
   const [sortBy, setSortBy] = useState("recent")
-  const { user, loading, error, refreshUser } = useUser()
+  const { user, error, refreshUser } = useUser()
   
   // --- USER PERMISSION CHECKS ---
   const isStudent = user?.username === "student"

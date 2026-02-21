@@ -1015,7 +1015,7 @@ export default function StudentDashboard() {
               <EyeIcon className="mr-2 h-5 w-5" />
               Preview Anonymous Resume
             </Button>
-            <Link href="/team-builder">
+            <Link href="/team-builder" className="block">
               <Button className="w-full justify-start bg-transparent" variant="outline">
                 <UserGroupIcon className="mr-2 h-5 w-5" />
                 Find Team Members

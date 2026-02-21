@@ -68,7 +68,7 @@ export function Sidebar() {
             <AcademicCapIcon className="h-6 w-6" />
           </div>
           <div className="flex flex-col">
-            <span className="text-sm font-bold text-foreground">Campus Portal</span>
+            <span className="text-sm font-bold text-foreground">Katana</span>
             <span className="text-xs text-muted-foreground capitalize">{activeRole}</span>
           </div>
         </Link>

@@ -102,6 +102,8 @@ export default function StudentDashboard() {
 
   const [dynamicDomains, setDynamicDomains] = useState<DomainData>(normalizedDomains)
 
+  const [extractedSkills, setExtractedSkills] = useState<any[]>([]);
+
   useEffect(() => {
     const storedSkills = localStorage.getItem("parsedSkills")
 
@@ -113,21 +115,6 @@ export default function StudentDashboard() {
   const resumeSkillList = extractedSkills
     ? normalizeSkillList(extractedSkills.map((s: any) => s.skill))
     : []
-  // State for chart (THIS WAS CORRECT)
-  const [dynamicDomains, setDynamicDomains] =
-    useState<DomainData>(normalizedDomains)
-
-  useEffect(() => {
-    if (currentUser) {
-      setDynamicDomains({
-        web: currentUser?.domains?.web ?? 0,
-        ml: currentUser?.domains?.ml ?? 0,
-        cp: (currentUser?.domains as any)?.core ?? currentUser?.domains?.cp ?? 0,
-        appDev: (currentUser?.domains as any)?.systems ?? currentUser?.domains?.appDev ?? 0,
-        cyber: (currentUser?.domains as any)?.tools ?? currentUser?.domains?.cyber ?? 0,
-      })
-    }
-  }, [currentUser])
 
   // Fetch resumes list from backend
   useEffect(() => {
@@ -201,7 +188,7 @@ export default function StudentDashboard() {
   // Global skill-gap summary
   const skillImportance = calculateSkillImportance(opportunities)
   const allOpportunitySkills = opportunities.flatMap((o) => o.skills)
-  const resumeSkillList = normalizeSkillList(activeSkills)
+  // resumeSkillList is already defined near line 113 using extracted skills
 
   const { missing: globalMissingSkills } = analyzeSkillGap(
     resumeSkillList,
@@ -230,8 +217,8 @@ export default function StudentDashboard() {
         body: formData,
       })
 
-      if (!response.ok) throw new Error("Connection to backend failed")
-      const data = await response.json()
+      if (!parseResponse.ok) throw new Error("Connection to backend failed")
+      const data = await parseResponse.json()
 
       // 2. Extract skills from parser response and append to formData
       if (data.success && data.skills) {
@@ -242,8 +229,6 @@ export default function StudentDashboard() {
         formData.append("skills", JSON.stringify(skillsArray))
       }
 
-
-
       console.log("Going for: ", `${process.env.NEXT_PUBLIC_BACKEND_URL}/resume/upload`)
       const uploadResponse = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/resume/upload`, {
         method: "POST",
@@ -251,54 +236,47 @@ export default function StudentDashboard() {
         body: formData,
       })
 
-      if (!parseResponse.ok) throw new Error("Connection to parser failed")
-
-      const data = await parseResponse.json()
-
-      if (data.success) {
-        // Extract string array of skills from parser output
-        const extractedSkillStrings = data.skills.map((s: any) => s.skill)
-
-        // 3. Save to database via your PUT route
-        const updateResponse = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/students/update-skills`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            username: user?.id,
-            skills: extractedSkillStrings
-          })
+      if (!uploadResponse.ok) throw new Error("Connection to storage failed")
+      const updateResponse = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/students/update-skills`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          username: user?.id,
+          skills: data.skills.map((s: any) => s.skill)
         })
+      })
 
-        if (!updateResponse.ok) throw new Error("Failed to save skills to database")
+      if (!updateResponse.ok) throw new Error("Failed to save skills to database")
 
-        // 4. Update UI State so it re-renders immediately
-        setActiveSkills(extractedSkillStrings)
+      // 4. Update UI State so it re-renders immediately
+      const extractedSkillStrings = data.skills.map((s: any) => s.skill)
+      setActiveSkills(extractedSkillStrings)
 
-        // 5. Update Domain Chart (Mapping backend categories to UI bars)
-        const newChart: DomainData = { web: 0, ml: 0, cp: 0, appDev: 0, cyber: 0 }
+      // 5. Update Domain Chart (Mapping backend categories to UI bars)
+      const newChart: DomainData = { web: 0, ml: 0, cp: 0, appDev: 0, cyber: 0 }
 
-        data.skills.forEach((s: any) => {
-          const cat = s.category.toLowerCase()
-          if (cat === "frontend" || cat === "backend") newChart.web += 12
-          if (cat === "ml_ai") newChart.ml += 20
-          if (cat === "programming_languages") newChart.cp += 15
-          if (cat === "database" || cat === "devops") newChart.appDev += 12
-          if (cat === "tools_and_others") newChart.cyber += 10
-        })
+      data.skills.forEach((s: any) => {
+        const cat = s.category.toLowerCase()
+        if (cat === "frontend" || cat === "backend") newChart.web += 12
+        if (cat === "ml_ai") newChart.ml += 20
+        if (cat === "programming_languages") newChart.cp += 15
+        if (cat === "database" || cat === "devops") newChart.appDev += 12
+        if (cat === "tools_and_others") newChart.cyber += 10
+      })
 
-        setDynamicDomains({
-          web: Math.min(newChart.web, 100),
-          ml: Math.min(newChart.ml, 100),
-          cp: Math.min(newChart.cp, 100),
-          appDev: Math.min(newChart.appDev, 100),
-          cyber: Math.min(newChart.cyber, 100),
-        })
+      setDynamicDomains({
+        web: Math.min(newChart.web, 100),
+        ml: Math.min(newChart.ml, 100),
+        cp: Math.min(newChart.cp, 100),
+        appDev: Math.min(newChart.appDev, 100),
+        cyber: Math.min(newChart.cyber, 100),
+      })
 
-        setShowResumeUpload(false)
-        window.location.reload()
-      }
+      setShowResumeUpload(false)
+      window.location.reload()
+
     } catch (error) {
       console.error("Upload error:", error)
       alert("Failed to process resume or save skills.")

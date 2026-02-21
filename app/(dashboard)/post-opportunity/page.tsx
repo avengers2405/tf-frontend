@@ -130,7 +130,7 @@ export default function PostOpportunityPage() {
       };
 
       try {
-        const response = await fetch(`http://localhost:5000/post-opportunity/opportunities`, {
+        const response = await fetch(`http://localhost:5000/api/project`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),

@@ -15,6 +15,10 @@ export default function LoginPage() {
   const searchParams = useSearchParams()
   const [identifier, setIdentifier] = useState("")
   const [password, setPassword] = useState("")
+  
+  // Added state to track the selected role for the UI
+  const [selectedRole, setSelectedRole] = useState<"student" | "teacher" | "tnp" | "recruiter">("student")
+  
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const showRegisteredMessage = searchParams.get("registered") === "1"
@@ -29,6 +33,8 @@ export default function LoginPage() {
       const response = await loginUser({
         identifier: identifier.trim(),
         password,
+        // If your backend eventually needs the role, you can pass it here like:
+        // role: selectedRole
       })
 
       const roleDashboardMap: Record<string, string> = {
@@ -60,7 +66,6 @@ export default function LoginPage() {
         {/* Left Section - Hero Area */}
         <div className="hidden lg:flex flex-col justify-center p-12 xl:p-24 relative">
           <div className="flex items-center gap-3 mb-12">
-            {/* Custom CSS Logo Shape */}
             <div className="w-0 h-0 border-l-[12px] border-l-transparent border-r-[12px] border-r-transparent border-b-[18px] border-b-blue-600 transform -rotate-90"></div>
             <span className="text-2xl font-bold tracking-widest text-[#1e3a8a]">KATANA</span>
           </div>
@@ -114,20 +119,56 @@ export default function LoginPage() {
                 </Alert>
               ) : null}
 
-              {/* Static Role Selection */}
+              {/* Interactive Role Selection */}
               <div className="mb-8">
                 <p className="text-[10px] font-bold text-slate-400 mb-3 tracking-widest uppercase">I am a —</p>
                 <div className="grid grid-cols-2 gap-3">
-                  <Button type="button" variant="outline" className="justify-start gap-2 border-blue-600 bg-blue-50/50 text-blue-700 hover:bg-blue-50 h-11 rounded-xl">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => setSelectedRole("student")}
+                    className={`justify-start gap-2 h-11 rounded-xl transition-colors ${
+                      selectedRole === "student" 
+                        ? "border-blue-600 bg-blue-50/50 text-blue-700 hover:bg-blue-50" 
+                        : "text-slate-600 border-slate-200 hover:bg-slate-50"
+                    }`}
+                  >
                     <GraduationCap className="h-4 w-4" /> Student
                   </Button>
-                  <Button type="button" variant="outline" className="justify-start gap-2 text-slate-600 border-slate-200 hover:bg-slate-50 h-11 rounded-xl">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => setSelectedRole("teacher")}
+                    className={`justify-start gap-2 h-11 rounded-xl transition-colors ${
+                      selectedRole === "teacher" 
+                        ? "border-blue-600 bg-blue-50/50 text-blue-700 hover:bg-blue-50" 
+                        : "text-slate-600 border-slate-200 hover:bg-slate-50"
+                    }`}
+                  >
                     <Presentation className="h-4 w-4" /> Teacher
                   </Button>
-                  <Button type="button" variant="outline" className="justify-start gap-2 text-slate-600 border-slate-200 hover:bg-slate-50 h-11 rounded-xl">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => setSelectedRole("tnp")}
+                    className={`justify-start gap-2 h-11 rounded-xl transition-colors ${
+                      selectedRole === "tnp" 
+                        ? "border-blue-600 bg-blue-50/50 text-blue-700 hover:bg-blue-50" 
+                        : "text-slate-600 border-slate-200 hover:bg-slate-50"
+                    }`}
+                  >
                     <Building2 className="h-4 w-4" /> TNP Officer
                   </Button>
-                  <Button type="button" variant="outline" className="justify-start gap-2 text-slate-600 border-slate-200 hover:bg-slate-50 h-11 rounded-xl">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => setSelectedRole("recruiter")}
+                    className={`justify-start gap-2 h-11 rounded-xl transition-colors ${
+                      selectedRole === "recruiter" 
+                        ? "border-blue-600 bg-blue-50/50 text-blue-700 hover:bg-blue-50" 
+                        : "text-slate-600 border-slate-200 hover:bg-slate-50"
+                    }`}
+                  >
                     <Briefcase className="h-4 w-4" /> Recruiter
                   </Button>
                 </div>

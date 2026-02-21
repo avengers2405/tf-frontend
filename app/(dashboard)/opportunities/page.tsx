@@ -16,7 +16,7 @@ import Link from "next/link"
 import { getDaysUntil } from "@/lib/utils"
 import { analyzeOpportunity, generateUserIdeal, UserPreferences } from "@/lib/vibe-logic"
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Legend } from 'recharts'
-
+import { mockOpportunities } from "@/lib/mock-data"
 
 import { useUser } from "@/contexts/UserContext"
 
@@ -44,6 +44,13 @@ export default function OpportunitiesPage() {
   const [loading, setLoading] = useState(false)
   const [projectOpportunities, setProjectOpportunities] = useState<any[]>([])
 
+  useEffect(() => {
+    if (opportunities.length === 0) {
+      useAppStore.setState({
+        opportunities: mockOpportunities,
+      })
+    }
+  }, [])
   console.log("Current User:", currentUser)
   useEffect(() => {
     const fetchTeacherProjects = async () => {
@@ -121,35 +128,63 @@ export default function OpportunitiesPage() {
   }
 
 
-  // --- BULLETPROOF SEARCH AND FILTER LOGIC ---
+    // --- BULLETPROOF SEARCH AND FILTER LOGIC ---
   // 1. Ensure opportunities is always an array (prevents crash on load)
   const safeOpportunities = Array.isArray(opportunities) ? opportunities : []
 
-//   const filteredOpportunities = safeOpportunities
+  // 2. Merge store + project opportunities safely (NO duplicates)
+  const combinedOpportunities = Array.from(
+    new Map(
+      [...safeOpportunities, ...projectOpportunities].map(item => [
+        item?.id || item?.project_id,
+        item
+      ])
+    ).values()
+  )
 
-  const combinedOpportunities = [...opportunities, ...projectOpportunities];
-
-  const filteredOpportunities = combinedOpportunities.filter((opp) => {
+  // 3. Filter + Search
+  const filteredOpportunities = combinedOpportunities
+    .filter((opp) => {
       if (!opp) return false
 
-      // 2. Search Matching (Safe & Case-insensitive)
+      // Search (Safe)
       const searchTerm = search.toLowerCase().trim()
+
       const safeTitle = opp.title?.toLowerCase() || ""
       const safeCompany = opp.company?.toLowerCase() || ""
       const safeSkills = Array.isArray(opp.skills) ? opp.skills : []
 
-      const matchesSearch = 
-        searchTerm === "" || 
+      const matchesSearch =
+        searchTerm === "" ||
         safeTitle.includes(searchTerm) ||
         safeCompany.includes(searchTerm) ||
-        safeSkills.some((skill: string) => skill?.toLowerCase().includes(searchTerm))
+        safeSkills.some((skill:string) =>
+          skill?.toLowerCase().includes(searchTerm)
+        )
 
-      // 3. Type Matching (Forces both sides to lowercase to prevent "Internship" !== "internship")
+      // Type filter (Case-safe)
       const safeType = opp.type?.toLowerCase() || ""
       const filterType = typeFilter.toLowerCase()
-      const matchesType = typeFilter === "all" || safeType === filterType
+
+      const matchesType =
+        typeFilter === "all" || safeType === filterType
 
       return matchesSearch && matchesType
+    })
+
+    // 4. Sorting
+    .sort((a, b) => {
+      if (sortBy === "deadline") {
+        return (
+          new Date(a.deadline || 0).getTime() -
+          new Date(b.deadline || 0).getTime()
+        )
+      }
+
+      return (
+        new Date(b.postedDate || 0).getTime() -
+        new Date(a.postedDate || 0).getTime()
+      )
     })
     .sort((a, b) => {
       // 4. Sorting Logic (Safe Date Parsing)
@@ -202,9 +237,9 @@ export default function OpportunitiesPage() {
                   <Select value={userPrefs.priority} onValueChange={(v: any) => setUserPrefs({...userPrefs, priority: v})}>
                       <SelectTrigger className="h-9 w-full text-xs bg-background border-0 shadow-sm sm:w-[130px]"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                          <SelectItem value="Money">💰 Money</SelectItem>
-                          <SelectItem value="Learning">🎓 Learning</SelectItem>
-                          <SelectItem value="Balance">🧘 Balance</SelectItem>
+                          <SelectItem value="Money"> Money</SelectItem>
+                          <SelectItem value="Learning"> Learning</SelectItem>
+                          <SelectItem value="Balance"> Balance</SelectItem>
                       </SelectContent>
                   </Select>
               </div>
@@ -237,7 +272,7 @@ export default function OpportunitiesPage() {
                 <SelectItem value="all">All Types</SelectItem>
                 <SelectItem value="internship">Internships</SelectItem>
                 <SelectItem value="project">Projects</SelectItem>
-                <SelectItem value="fulltime">Full-time</SelectItem>
+
               </SelectContent>
             </Select>
 

@@ -53,7 +53,7 @@ export function DomainChart({ domains }: DomainChartProps) {
   const data = [
     { name: "Web Dev", value: domains.web },
     { name: "AI / ML", value: domains.ml },
-    { name: "Comp. Programming", value: domains.cp },
+    { name: "Programming", value: domains.cp },
     { name: "App Dev", value: domains.appDev },
     { name: "Cybersecurity", value: domains.cyber },
   ]
@@ -80,6 +80,7 @@ export function DomainChart({ domains }: DomainChartProps) {
           tickLine={false}
           axisLine={false} // Removes the solid baseline for a floating look
         />
+        
         <YAxis
           domain={[0, 100]}
           stroke="hsl(var(--muted-foreground))"

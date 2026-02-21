@@ -6,16 +6,12 @@ import { StatCard } from "@/components/ui/stat-card"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { UserGroupIcon, BriefcaseIcon, KeyIcon, DocumentTextIcon } from "@heroicons/react/24/outline"
 import Link from "next/link"
 import MiniSearch from "minisearch"
 
 export default function RecruiterDashboard() {
   const { students, opportunities } = useAppStore()
-  const [inviteToken, setInviteToken] = useState("")
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [showInviteDialog, setShowInviteDialog] = useState(!isAuthenticated)
   
   // State for API data
   const [resumes, setResumes] = useState([])
@@ -24,32 +20,23 @@ export default function RecruiterDashboard() {
   // New state for search query
   const [searchQuery, setSearchQuery] = useState("")
 
-  const handleInviteSubmit = () => {
-    if (inviteToken === "RECRUIT2025" || inviteToken.length > 5) {
-      setIsAuthenticated(true)
-      setShowInviteDialog(false)
-    }
-  }
-
-  // Fetch data when recruiter authenticates
+  // Fetch data directly for authenticated recruiter sessions
   useEffect(() => {
-    if (isAuthenticated) {
-      setIsLoading(true)
-      fetch("http://localhost:5000/resume/listall")
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.success) {
-            // Sort by newest first
-            const sortedDocs = data.documents.sort(
-              (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-            )
-            setResumes(sortedDocs)
-          }
-        })
-        .catch((error) => console.error("Error fetching resumes:", error))
-        .finally(() => setIsLoading(false))
-    }
-  }, [isAuthenticated])
+    setIsLoading(true)
+    fetch("http://localhost:5000/resume/listall")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          // Sort by newest first
+          const sortedDocs = data.documents.sort(
+            (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          )
+          setResumes(sortedDocs)
+        }
+      })
+      .catch((error) => console.error("Error fetching resumes:", error))
+      .finally(() => setIsLoading(false))
+  }, [])
 
   // --- MINISEARCH OPTIMIZATION LOGIC ---
 
@@ -100,38 +87,6 @@ export default function RecruiterDashboard() {
     return combinedIds.map(id => resumes.find(r => r.id === id)).filter(Boolean)
   }, [searchQuery, miniSearch, resumes])
 
-  if (!isAuthenticated) {
-    return (
-      <Dialog open={showInviteDialog} onOpenChange={() => {}}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Recruiter Access</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Enter your invite token to access the recruiter dashboard and anonymous student database.
-            </p>
-            <div className="space-y-2">
-              <Input
-                placeholder="Enter invite token"
-                value={inviteToken}
-                onChange={(e) => setInviteToken(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleInviteSubmit()}
-              />
-              <p className="text-xs text-muted-foreground">
-                Demo token: <code className="rounded bg-secondary px-1">RECRUIT2025</code>
-              </p>
-            </div>
-            <Button onClick={handleInviteSubmit} className="w-full">
-              <KeyIcon className="mr-2 h-4 w-4" />
-              Access Dashboard
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    )
-  }
-
   const topSkills = ["React", "Python", "Machine Learning", "Node.js", "Android"]
   const uniqueStudents = new Set(resumes.map(doc => doc.student_registration_number)).size
   
@@ -145,10 +100,6 @@ export default function RecruiterDashboard() {
           <h1 className="text-3xl font-bold text-foreground">Recruiter Dashboard</h1>
           <p className="mt-1 text-muted-foreground">Discover top talent from our campus</p>
         </div>
-        <Button variant="outline" onClick={() => setIsAuthenticated(false)}>
-          <KeyIcon className="mr-2 h-4 w-4" />
-          Change Token
-        </Button>
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">

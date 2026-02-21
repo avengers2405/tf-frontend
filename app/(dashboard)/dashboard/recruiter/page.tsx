@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useAppStore } from "@/lib/store"
 import { StatCard } from "@/components/ui/stat-card"
 import { Card } from "@/components/ui/card"
@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { SkillBadge } from "@/components/ui/skill-badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { UserGroupIcon, BriefcaseIcon, StarIcon, KeyIcon } from "@heroicons/react/24/outline"
+import { UserGroupIcon, BriefcaseIcon, StarIcon, KeyIcon, DocumentTextIcon } from "@heroicons/react/24/outline"
 import Link from "next/link"
 
 export default function RecruiterDashboard() {
@@ -16,6 +16,10 @@ export default function RecruiterDashboard() {
   const [inviteToken, setInviteToken] = useState("")
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [showInviteDialog, setShowInviteDialog] = useState(!isAuthenticated)
+  
+  // New state for API data
+  const [resumes, setResumes] = useState([])
+  const [isLoading, setIsLoading] = useState(false)
 
   const handleInviteSubmit = () => {
     if (inviteToken === "RECRUIT2025" || inviteToken.length > 5) {
@@ -23,6 +27,26 @@ export default function RecruiterDashboard() {
       setShowInviteDialog(false)
     }
   }
+
+  // Fetch data when recruiter authenticates
+  useEffect(() => {
+    if (isAuthenticated) {
+      setIsLoading(true)
+      fetch("http://localhost:5000/resume/listall")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success) {
+            // Sort by newest first
+            const sortedDocs = data.documents.sort(
+              (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+            )
+            setResumes(sortedDocs)
+          }
+        })
+        .catch((error) => console.error("Error fetching resumes:", error))
+        .finally(() => setIsLoading(false))
+    }
+  }, [isAuthenticated])
 
   if (!isAuthenticated) {
     return (
@@ -59,6 +83,9 @@ export default function RecruiterDashboard() {
   // Calculate some stats
   const topSkills = ["React", "Python", "Machine Learning", "Node.js", "Android"]
   const avgCGPA = (students.reduce((sum, s) => sum + s.cgpa, 0) / students.length).toFixed(2)
+  
+  // Calculate unique students based on registration numbers
+  const uniqueStudents = new Set(resumes.map(doc => doc.student_registration_number)).size
 
   return (
     <div className="space-y-6">
@@ -75,20 +102,20 @@ export default function RecruiterDashboard() {
 
       <div className="grid gap-6 md:grid-cols-3">
         <StatCard
-          title="Available Candidates"
-          value={students.length}
-          description="Anonymous profiles"
+          title="Active Candidates"
+          value={uniqueStudents}
+          description="Unique student profiles"
           icon={<UserGroupIcon className="h-6 w-6" />}
         />
         <StatCard
-          title="Average CGPA"
-          value={avgCGPA}
-          description="Across all departments"
-          icon={<StarIcon className="h-6 w-6" />}
+          title="Total Resumes"
+          value={resumes.length}
+          description="Uploaded to database"
+          icon={<DocumentTextIcon className="h-6 w-6" />}
         />
         <StatCard
           title="Active Opportunities"
-          value={opportunities.length}
+          value={opportunities?.length || 0}
           description="Posted by companies"
           icon={<BriefcaseIcon className="h-6 w-6" />}
         />
@@ -142,31 +169,44 @@ export default function RecruiterDashboard() {
       </Card>
 
       <Card className="glass rounded-2xl p-6">
-        <h2 className="mb-4 text-xl font-semibold text-foreground">Featured Candidates</h2>
-        <p className="mb-4 text-sm text-muted-foreground">High-performing students with diverse skill sets</p>
-        <div className="grid gap-4 md:grid-cols-2">
-          {students.slice(0, 4).map((student) => (
-            <div key={student.id} className="rounded-lg border border-border p-4">
-              <div className="mb-3 flex items-start justify-between">
-                <div>
-                  <h3 className="font-semibold text-foreground">Candidate {student.id}</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {student.department} • Year {student.year}
-                  </p>
-                  <p className="text-sm font-medium text-primary">CGPA: {student.cgpa}</p>
+        <h2 className="mb-4 text-xl font-semibold text-foreground">Recently Uploaded Resumes</h2>
+        <p className="mb-4 text-sm text-muted-foreground">Latest candidate submissions from the database</p>
+        
+        {isLoading ? (
+          <div className="flex justify-center p-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2">
+            {resumes.slice(0, 6).map((doc) => (
+              <div key={doc.id} className="rounded-lg border border-border p-4">
+                <div className="mb-3 flex items-start justify-between">
+                  <div>
+                    <h3 className="font-semibold text-foreground uppercase">
+                      ID: {doc.student_registration_number}
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Uploaded: {new Date(doc.created_at).toLocaleDateString()}
+                    </p>
+                    <p className="text-xs text-muted-foreground/60 mt-1 truncate max-w-[200px]">
+                      {doc.name}
+                    </p>
+                  </div>
                 </div>
+                {/* Note: In order for this link to work, you must set up the route.ts handler we discussed! */}
+                <Button size="sm" variant="outline" asChild className="w-full bg-transparent">
+                  <a 
+                    href={doc.document_url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                  >
+                    View Resume PDF
+                  </a>
+                </Button>
               </div>
-              <div className="mb-3 flex flex-wrap gap-1">
-                {student.skills.slice(0, 4).map((skill) => (
-                  <SkillBadge key={skill} skill={skill} />
-                ))}
-              </div>
-              <Button size="sm" variant="outline" asChild className="w-full bg-transparent">
-                <Link href="/resumes">View Full Profile</Link>
-              </Button>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </Card>
 
       <Card className="glass rounded-2xl p-6 bg-primary/5 border-primary/20">

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { SkillBadge } from "@/components/ui/skill-badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { UserGroupIcon, BriefcaseIcon, StarIcon, KeyIcon, DocumentTextIcon } from "@heroicons/react/24/outline"
+import { UserGroupIcon, BriefcaseIcon, StarIcon, KeyIcon, DocumentTextIcon, XMarkIcon } from "@heroicons/react/24/outline"
 import Link from "next/link"
 
 export default function RecruiterDashboard() {
@@ -20,6 +20,9 @@ export default function RecruiterDashboard() {
   // New state for API data
   const [resumes, setResumes] = useState([])
   const [isLoading, setIsLoading] = useState(false)
+  
+  // New state for filtering
+  const [selectedSkills, setSelectedSkills] = useState([])
 
   const handleInviteSubmit = () => {
     if (inviteToken === "RECRUIT2025" || inviteToken.length > 5) {
@@ -88,6 +91,38 @@ export default function RecruiterDashboard() {
   // Calculate unique students based on registration numbers
   const uniqueStudents = new Set(resumes.map(doc => doc.student_registration_number)).size
 
+  // --- FILTERING LOGIC ---
+  // Extract unique skills from all resumes to create filter options
+  const allUniqueSkills = Array.from(
+    new Set(resumes.flatMap((doc) => (doc.skills || []).map(s => s.trim())))
+  ).filter(Boolean).sort()
+
+  // Toggle selection of skills
+  const toggleSkill = (skill) => {
+    setSelectedSkills((prev) =>
+      prev.includes(skill)
+        ? prev.filter((s) => s !== skill)
+        : [...prev, skill]
+    )
+  }
+
+  // Clear all filters
+  const clearFilters = () => setSelectedSkills([])
+
+  // Filter resumes based on selected skills (AND logic: must have ALL selected skills)
+  const filteredResumes = selectedSkills.length > 0
+    ? resumes.filter((doc) =>
+        selectedSkills.every((selectedSkill) =>
+          doc.skills?.some(
+            (docSkill) => docSkill.toLowerCase().trim() === selectedSkill.toLowerCase().trim()
+          )
+        )
+      )
+    : resumes
+
+  // Determine what to display (show all matches if filtering, otherwise show latest 6)
+  const displayedResumes = selectedSkills.length > 0 ? filteredResumes : filteredResumes.slice(0, 6)
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -155,11 +190,10 @@ export default function RecruiterDashboard() {
       <Card className="glass rounded-2xl p-6">
         <h2 className="mb-4 text-xl font-semibold text-foreground">Top Candidate Skills</h2>
         <div className="grid gap-4 md:grid-cols-5">
-         {topSkills.map((skill) => {
-  // Now fetching from your real database documents!
-  const count = resumes.filter((doc) =>
-    doc.skills && doc.skills.some((sk) => sk.toLowerCase().includes(skill.toLowerCase())),
-  ).length
+          {topSkills.map((skill) => {
+            const count = resumes.filter((doc) =>
+              doc.skills && doc.skills.some((sk) => sk.toLowerCase().includes(skill.toLowerCase())),
+            ).length
             return (
               <div key={skill} className="text-center rounded-lg border border-border p-4">
                 <div className="text-2xl font-bold text-primary">{count}</div>
@@ -171,48 +205,88 @@ export default function RecruiterDashboard() {
       </Card>
 
       <Card className="glass rounded-2xl p-6">
-        <h2 className="mb-4 text-xl font-semibold text-foreground">Recently Uploaded Resumes</h2>
-        <p className="mb-4 text-sm text-muted-foreground">Latest candidate submissions from the database</p>
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
+          <div>
+            <h2 className="text-xl font-semibold text-foreground">Recently Uploaded Resumes</h2>
+            <p className="text-sm text-muted-foreground">Latest candidate submissions from the database</p>
+          </div>
+        </div>
         
+        {/* SKILL FILTER SECTION */}
+        {!isLoading && allUniqueSkills.length > 0 && (
+          <div className="mb-6 rounded-lg border border-border bg-secondary/20 p-4">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-semibold text-foreground">Filter by Skills</span>
+              {selectedSkills.length > 0 && (
+                <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 px-2 text-xs">
+                  Clear Filters
+                </Button>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {allUniqueSkills.map((skill) => (
+                <button
+                  key={skill}
+                  onClick={() => toggleSkill(skill)}
+                  className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium transition-colors border ${
+                    selectedSkills.includes(skill)
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-background text-foreground border-border hover:border-primary/50"
+                  }`}
+                >
+                  {skill}
+                </button>
+              ))}
+            </div>
+            {selectedSkills.length > 0 && (
+              <p className="mt-3 text-xs text-muted-foreground">
+                Showing {filteredResumes.length} candidate{filteredResumes.length !== 1 ? 's' : ''} with <strong>all</strong> selected skills.
+              </p>
+            )}
+          </div>
+        )}
+
         {isLoading ? (
           <div className="flex justify-center p-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           </div>
+        ) : displayedResumes.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-muted-foreground">No resumes found matching the selected skills.</p>
+          </div>
         ) : (
           <div className="grid gap-4 md:grid-cols-2">
-            {resumes.slice(0, 6).map((doc) => (
+            {displayedResumes.map((doc) => (
               <div key={doc.id} className="rounded-lg border border-border p-4">
                 <div className="mb-3 flex items-start justify-between">
-                  <div>
+                  <div className="w-full">
                     <h3 className="font-semibold text-foreground uppercase">
                       ID: {doc.student_registration_number}
                     </h3>
                     <p className="text-sm text-muted-foreground">
                       Uploaded: {new Date(doc.created_at).toLocaleDateString()}
                     </p>
-                   <p className="text-xs text-muted-foreground/60 mt-1 truncate max-w-[200px]">
-      {doc.name}
-    </p>
+                    <p className="text-xs text-muted-foreground/60 mt-1 truncate max-w-full">
+                      {doc.name}
+                    </p>
     
-    {/* ADDED: Display up to 4 skills directly on the card */}
-    {doc.skills && doc.skills.length > 0 && (
-      <div className="mt-3 flex flex-wrap gap-1">
-        {doc.skills.slice(0, 4).map((skill, idx) => (
-          <span key={idx} className="inline-flex items-center rounded-md bg-secondary/50 px-2 py-0.5 text-xs font-medium text-secondary-foreground border border-border">
-            Skills:{skill}
-          </span>
-        ))}
-        {doc.skills.length > 4 && (
-          <span className="text-xs text-muted-foreground self-center ml-1">
-            +{doc.skills.length - 4} more
-          </span>
-        )}
-      </div>
-    )}
-  </div>
-</div>
-                 {/* Note: In order for this link to work, you must set up the route.ts handler we discussed! */}
-                <Button size="sm" variant="outline" asChild className="w-full bg-transparent">
+                    {doc.skills && doc.skills.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-1">
+                        {doc.skills.slice(0, 4).map((skill, idx) => (
+                          <span key={idx} className="inline-flex items-center rounded-md bg-secondary/50 px-2 py-0.5 text-xs font-medium text-secondary-foreground border border-border">
+                            {skill}
+                          </span>
+                        ))}
+                        {doc.skills.length > 4 && (
+                          <span className="text-xs text-muted-foreground self-center ml-1">
+                            +{doc.skills.length - 4} more
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <Button size="sm" variant="outline" asChild className="w-full bg-transparent mt-2">
                   <a 
                     href={doc.document_url} 
                     target="_blank" 

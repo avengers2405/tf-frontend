@@ -1,7 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
-// Removed useAppStore as we are now fetching data dynamically
+import { useEffect, useState, useMemo } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -24,6 +23,7 @@ export default function OpportunitiesPage() {
 
   // --- USER PERMISSION CHECKS ---
   const isStudent = currentUser?.username === "student"
+  const isRecruiter = currentUser?.username?.toLowerCase() === "recruiter"
   const canPostOpp = ["teacher", "tnp", "recruiter"].includes(currentUser?.username?.toLowerCase() || "")
 
   // --- VIBE CHECK STATE ---
@@ -39,34 +39,29 @@ export default function OpportunitiesPage() {
   // --- DATA STATE ---
   const [loading, setLoading] = useState(true)
   const [projectOpportunities, setProjectOpportunities] = useState<any[]>([])
-  const [internshipOpportunities, setInternshipOpportunities] = useState<any[]>([]) // Added state for internships
+  const [internshipOpportunities, setInternshipOpportunities] = useState<any[]>([])
   const [isPlaced, setIsPlaced] = useState(false)
 
   useEffect(() => {
-    const fetchTeacherProjects = async () => {
+    const fetchOpportunities = async () => {
+      if (!currentUser?.id) return
       setLoading(true)
       try {
-        // Prepare fetch promises
-        const fetchProjects = currentUser?.id
-          ? fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/post-opportunity/getProjectOpportunitiesById/${currentUser.id}`).then(res => res.json())
-          : Promise.resolve({ success: false, data: [] })
+        // Prepare URLs
+        const projectUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL}/post-opportunity/getProjectOpportunitiesById/${currentUser.id}`
+        
+        let internshipsUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/internships/`
+        if (isRecruiter) {
+          internshipsUrl += `?user_id=${currentUser.id}`
+        }
 
-        // Assuming your new internship routes are mounted at /internships or /api/internships
-        // Adjust the path below if your backend mounts it differently!
-        const fetchInternships = fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/internships/`).then(res => {
-          if (!res.ok) throw new Error("Failed to fetch internships")
-          return res.json()
-        })
-        console.log("Internships", fetchInternships);
-        const fetchIsPlaced = currentUser?.id
-          ? fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/internships/check-placed/${currentUser.id}`).then(res => res.json())
-          : Promise.resolve({ isPlaced: false })
+        const placedUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/internships/check-placed/${currentUser.id}`
 
-        // Execute fetches concurrently
+        // Execute all fetches concurrently (Cleaned up from the double-declaration in original)
         const [projectsResult, internshipsResult, placedResult] = await Promise.all([
-          fetchProjects.catch(() => ({ success: false, data: [] })),
-          fetchInternships.catch(() => []),
-          fetchIsPlaced.catch(() => ({ isPlaced: false }))
+          fetch(projectUrl).then(res => res.json()).catch(() => ({ success: false, data: [] })),
+          fetch(internshipsUrl).then(res => res.json()).catch(() => []),
+          fetch(placedUrl).then(res => res.json()).catch(() => ({ isPlaced: false }))
         ])
 
         if (placedResult?.isPlaced) {
@@ -82,16 +77,17 @@ export default function OpportunitiesPage() {
             type: "project",
             description: proj.description,
             skills: proj.technology_stack ? proj.technology_stack.split(',').map((s: string) => s.trim()) : [],
-            postedDate: new Date().toISOString(),
-            deadline: new Date(new Date().setMonth(new Date().getMonth() + 3)).toISOString(),
+            postedDate: proj.created_at || new Date().toISOString(),
+            deadline: proj.deadline || new Date(new Date().setMonth(new Date().getMonth() + 3)).toISOString(),
             stipend: "Academic Credit",
-            duration: proj.academic_year,
-            applicants: proj._count?.groups || 0
+            duration: proj.academic_year || "N/A",
+            applicants: proj._count?.groups || 0,
+            postedById: proj.posted_by || proj.faculty_id
           }))
           setProjectOpportunities(mappedProjects)
         }
 
-        // 2. Map Internships (From your new Prisma controller)
+        // 2. Map Internships
         if (Array.isArray(internshipsResult)) {
           const mappedInternships = internshipsResult.map((internship: any) => ({
             id: internship.id,
@@ -99,19 +95,18 @@ export default function OpportunitiesPage() {
             company: internship.company || internship.postedBy?.company_name || "Unknown",
             type: "internship",
             description: internship.description,
-            // Ensure skills is always an array for the UI components
-            skills: Array.isArray(internship.skills)
-              ? internship.skills
-              : (typeof internship.skills === 'string' ? internship.skills.split(',').map((s: string) => s.trim()) : []),
+            skills: Array.isArray(internship.skills) 
+                ? internship.skills 
+                : (typeof internship.skills === 'string' ? internship.skills.split(',').map((s: string) => s.trim()) : []),
             postedDate: internship.posted_date || new Date().toISOString(),
             deadline: internship.deadline || new Date().toISOString(),
             stipend: internship.stipend || "Unpaid",
             duration: internship.duration || "N/A",
-            applicants: 0 // Optional: update if you add an applicant count to your schema
+            applicants: internship.applicants || 0,
+            postedById: internship.postedBy?.user_id || internship.posted_by
           }))
           setInternshipOpportunities(mappedInternships)
         }
-
       } catch (error) {
         console.error("Error fetching opportunities:", error)
       } finally {
@@ -119,37 +114,34 @@ export default function OpportunitiesPage() {
       }
     }
 
-    if (currentUser?.id) {
-      fetchTeacherProjects()
-    }
-  }, [currentUser?.id])
+    fetchOpportunities()
+  }, [currentUser?.id, isRecruiter])
 
+  // --- MEMOIZED FILTERING & SORTING ---
+  const filteredOpportunities = useMemo(() => {
+    const combined = [...internshipOpportunities, ...projectOpportunities]
+    const searchTerm = search.toLowerCase().trim()
 
-  if (loading || userLoading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    )
-  }
+    return combined
+      .filter((opp) => {
+        if (!opp) return false
+        
+        const matchesSearch = searchTerm === "" || 
+          opp.title?.toLowerCase().includes(searchTerm) ||
+          opp.company?.toLowerCase().includes(searchTerm) ||
+          (Array.isArray(opp.skills) && opp.skills.some((s: string) => s.toLowerCase().includes(searchTerm)))
 
-  if (isPlaced) {
-    return (
-      <div className="flex h-[70vh] items-center justify-center">
-        <Card className="glass rounded-2xl p-12 text-center max-w-md w-full border-primary/20 bg-primary/5">
-          <div className="flex flex-col items-center gap-4">
-            <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-3xl">
-              🎉
-            </div>
-            <h2 className="text-2xl font-bold text-foreground">Congratulations!</h2>
-            <p className="text-muted-foreground">
-              You have already been selected for an opportunity. The next step is to focus on your upcoming journey!
-            </p>
-          </div>
-        </Card>
-      </div>
-    )
-  }
+        const matchesType = typeFilter === "all" || opp.type?.toLowerCase() === typeFilter.toLowerCase()
+
+        return matchesSearch && matchesType
+      })
+      .sort((a, b) => {
+        if (sortBy === "deadline") {
+          return new Date(a.deadline || 0).getTime() - new Date(b.deadline || 0).getTime()
+        }
+        return new Date(b.postedDate || 0).getTime() - new Date(a.postedDate || 0).getTime()
+      })
+  }, [internshipOpportunities, projectOpportunities, search, typeFilter, sortBy])
 
   // --- CHART DATA GENERATOR ---
   const getChartData = () => {
@@ -174,44 +166,27 @@ export default function OpportunitiesPage() {
     setTimeout(() => setAnalyzing(false), 1200)
   }
 
-  // --- BULLETPROOF SEARCH AND FILTER LOGIC ---
-  // Combine both dynamically fetched arrays
-  const combinedOpportunities = [...internshipOpportunities, ...projectOpportunities]
+  if (loading || userLoading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    )
+  }
 
-  const filteredOpportunities = combinedOpportunities.filter((opp) => {
-    if (!opp) return false
-
-    // 2. Search Matching
-    const searchTerm = search.toLowerCase().trim()
-
-    const safeTitle = opp.title?.toLowerCase() || ""
-    const safeCompany = opp.company?.toLowerCase() || ""
-    const safeSkills = Array.isArray(opp.skills) ? opp.skills : []
-
-    const matchesSearch =
-      searchTerm === "" ||
-      safeTitle.includes(searchTerm) ||
-      safeCompany.includes(searchTerm) ||
-      safeSkills.some((skill: string) =>
-        skill?.toLowerCase().includes(searchTerm)
-      )
-
-    // 3. Type Matching
-    const safeType = opp.type?.toLowerCase() || ""
-    const filterType = typeFilter.toLowerCase()
-
-    const matchesType =
-      typeFilter === "all" || safeType === filterType
-
-    return matchesSearch && matchesType
-  })
-    .sort((a, b) => {
-      // 4. Sorting Logic
-      if (sortBy === "deadline") {
-        return new Date(a.deadline || 0).getTime() - new Date(b.deadline || 0).getTime()
-      }
-      return new Date(b.postedDate || 0).getTime() - new Date(a.postedDate || 0).getTime()
-    })
+  if (isPlaced) {
+    return (
+      <div className="flex h-[70vh] items-center justify-center">
+        <Card className="glass rounded-2xl p-12 text-center max-w-md w-full border-primary/20 bg-primary/5">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-3xl">🎉</div>
+            <h2 className="text-2xl font-bold text-foreground">Congratulations!</h2>
+            <p className="text-muted-foreground">You have already been selected for an opportunity. Focus on your upcoming journey!</p>
+          </div>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -220,7 +195,6 @@ export default function OpportunitiesPage() {
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Opportunities</h1>
           <p className="text-muted-foreground">{filteredOpportunities.length} opportunities available</p>
         </div>
-
         {canPostOpp && (
           <Button asChild className="w-full sm:w-auto">
             <Link href="/post-opportunity">Post Opportunity</Link>
@@ -256,9 +230,9 @@ export default function OpportunitiesPage() {
               <Select value={userPrefs.priority} onValueChange={(v: any) => setUserPrefs({ ...userPrefs, priority: v })}>
                 <SelectTrigger className="h-9 w-full text-xs bg-background border-0 shadow-sm sm:w-[130px]"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Money"> Money</SelectItem>
-                  <SelectItem value="Learning"> Learning</SelectItem>
-                  <SelectItem value="Balance"> Balance</SelectItem>
+                  <SelectItem value="Money">Money</SelectItem>
+                  <SelectItem value="Learning">Learning</SelectItem>
+                  <SelectItem value="Balance">Balance</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -291,7 +265,6 @@ export default function OpportunitiesPage() {
                 <SelectItem value="all">All Types</SelectItem>
                 <SelectItem value="internship">Internships</SelectItem>
                 <SelectItem value="project">Projects</SelectItem>
-
               </SelectContent>
             </Select>
 
@@ -317,43 +290,27 @@ export default function OpportunitiesPage() {
           const daysLeft = getDaysUntil(opp.deadline)
 
           return (
-            <Card
-              key={opp.id}
-              className="glass group flex min-w-0 flex-col rounded-2xl p-4 transition-all hover:shadow-xl hover:border-primary/40 sm:p-5"
-            >
+            <Card key={opp.id} className="glass group flex min-w-0 flex-col rounded-2xl p-4 transition-all hover:shadow-xl hover:border-primary/40 sm:p-5">
               <div className="mb-4">
                 <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0 flex-1 sm:mr-2">
-                    <h3 className="font-bold text-foreground group-hover:text-primary transition-colors truncate">
-                      {opp.title}
-                    </h3>
+                    <h3 className="font-bold text-foreground group-hover:text-primary transition-colors truncate">{opp.title}</h3>
                     <p className="text-sm text-muted-foreground font-medium">{opp.company}</p>
                   </div>
-                  <span
-                    className={`w-fit shrink-0 self-start rounded-full px-2.5 py-0.5 text-[10px] uppercase tracking-wider font-bold sm:self-auto ${opp.type?.toLowerCase() === "internship"
-                        ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
-                        : opp.type?.toLowerCase() === "project"
-                          ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                          : "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
-                      }`}
-                  >
+                  <span className={`w-fit shrink-0 self-start rounded-full px-2.5 py-0.5 text-[10px] uppercase tracking-wider font-bold sm:self-auto ${
+                    opp.type?.toLowerCase() === "internship" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" :
+                    opp.type?.toLowerCase() === "project" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" :
+                    "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
+                  }`}>
                     {opp.type}
                   </span>
                 </div>
-                <p className="text-sm text-muted-foreground line-clamp-2 h-10">
-                  {opp.description}
-                </p>
+                <p className="text-sm text-muted-foreground line-clamp-2 h-10">{opp.description}</p>
               </div>
 
               <div className="mb-4 flex flex-wrap gap-1.5">
-                {Array.isArray(opp.skills) && opp.skills.slice(0, 3).map((skill: string) => (
-                  <SkillBadge key={skill} skill={skill} />
-                ))}
-                {Array.isArray(opp.skills) && opp.skills.length > 3 && (
-                  <span className="text-xs text-muted-foreground self-center">
-                    +{opp.skills.length - 3}
-                  </span>
-                )}
+                {opp.skills?.slice(0, 3).map((skill: string) => <SkillBadge key={skill} skill={skill} />)}
+                {opp.skills?.length > 3 && <span className="text-xs text-muted-foreground self-center">+{opp.skills.length - 3}</span>}
               </div>
 
               <div className="mb-6 space-y-2 text-xs border-t border-muted/10 pt-4">
@@ -373,16 +330,11 @@ export default function OpportunitiesPage() {
 
               <div className={`mt-auto grid gap-2 ${isStudent ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1"}`}>
                 {isStudent && (
-                  <Button
-                    onClick={() => handleCheckVibe(opp)}
-                    className="w-full bg-linear-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-sm border-0"
-                    size="sm"
-                  >
+                  <Button onClick={() => handleCheckVibe(opp)} className="w-full bg-linear-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-sm border-0" size="sm">
                     <SparklesIcon className="w-3 h-3 mr-1.5 text-yellow-300" />
                     Vibe Check
                   </Button>
                 )}
-
                 <Button asChild className="w-full shadow-sm" variant="outline" size="sm">
                   <Link href={`/opportunities/${opp.id}`}>Details</Link>
                 </Button>
@@ -397,13 +349,13 @@ export default function OpportunitiesPage() {
         <Card className="glass rounded-2xl p-16 text-center border-dashed">
           <div className="max-w-xs mx-auto space-y-2">
             <p className="text-lg font-medium">No results found</p>
-            <p className="text-sm text-muted-foreground">Try adjusting your filters or search terms to find what you're looking for.</p>
+            <p className="text-sm text-muted-foreground">Try adjusting your filters or search terms.</p>
             <Button variant="link" onClick={() => { setSearch(""); setTypeFilter("all") }}>Clear all filters</Button>
           </div>
         </Card>
       )}
 
-      {/* --- VIBE CHECK MODAL --- */}
+      {/* Vibe Check Modal */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="max-w-5xl bg-zinc-950 border-zinc-800 text-white p-0 overflow-hidden rounded-2xl h-[85vh] md:h-[600px]">
           {analyzing ? (
@@ -419,7 +371,6 @@ export default function OpportunitiesPage() {
             </div>
           ) : (
             <div className="flex flex-col md:flex-row h-full">
-              {/* LEFT: CHART */}
               <div className="w-full md:w-1/2 bg-zinc-900/50 p-8 flex flex-col relative">
                 <div className="absolute top-4 left-4 z-10">
                   <Badge className="bg-zinc-800 text-zinc-300 border-0">Priority: {userPrefs.priority}</Badge>
@@ -428,45 +379,21 @@ export default function OpportunitiesPage() {
                   <ResponsiveContainer width="100%" height="100%">
                     <RadarChart cx="50%" cy="50%" outerRadius="65%" data={getChartData()}>
                       <PolarGrid stroke="#52525b" strokeOpacity={0.5} />
-                      <PolarAngleAxis
-                        dataKey="subject"
-                        tick={{ fill: 'white', fontSize: 12, fontWeight: 'bold' }}
-                      />
+                      <PolarAngleAxis dataKey="subject" tick={{ fill: 'white', fontSize: 12, fontWeight: 'bold' }} />
                       <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-
-                      <Radar
-                        name="You"
-                        dataKey="A"
-                        stroke="#a855f7"
-                        strokeWidth={3}
-                        fill="#a855f7"
-                        fillOpacity={0.5}
-                        dot={{ r: 4, fillOpacity: 1 }}
-                      />
-
-                      <Radar
-                        name={selectedOpp?.company}
-                        dataKey="B"
-                        stroke="#10b981"
-                        strokeWidth={3}
-                        fill="#10b981"
-                        fillOpacity={0.5}
-                        dot={{ r: 4, fillOpacity: 1 }}
-                      />
-
+                      <Radar name="You" dataKey="A" stroke="#a855f7" strokeWidth={3} fill="#a855f7" fillOpacity={0.5} dot={{ r: 4, fillOpacity: 1 }} />
+                      <Radar name={selectedOpp?.company} dataKey="B" stroke="#10b981" strokeWidth={3} fill="#10b981" fillOpacity={0.5} dot={{ r: 4, fillOpacity: 1 }} />
                       <Legend wrapperStyle={{ paddingTop: '20px', fontSize: '14px' }} />
                     </RadarChart>
                   </ResponsiveContainer>
                 </div>
               </div>
 
-              {/* RIGHT: INSIGHTS */}
               <div className="w-full md:w-1/2 bg-zinc-950 p-6 md:p-8 flex flex-col justify-center border-l border-zinc-800">
                 <div className="mb-6">
                   <h2 className="text-2xl font-black mb-1">{selectedOpp?.title}</h2>
                   <p className="text-zinc-400">{selectedOpp?.company}</p>
                 </div>
-
                 <div className="space-y-4 mb-8">
                   {analyzeOpportunity(selectedOpp, userPrefs).financials > 80 && userPrefs.priority === 'Money' && (
                     <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex gap-3">
@@ -477,7 +404,6 @@ export default function OpportunitiesPage() {
                       </div>
                     </div>
                   )}
-
                   {analyzeOpportunity(selectedOpp, userPrefs).skillMatch < 50 ? (
                     <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 flex gap-3">
                       <AcademicCapIcon className="w-5 h-5 text-red-500 shrink-0" />
@@ -496,17 +422,10 @@ export default function OpportunitiesPage() {
                     </div>
                   )}
                 </div>
-
                 <div className="flex gap-3">
                   <Button className="flex-1 bg-white text-black hover:bg-zinc-200 font-bold">Apply Now</Button>
-
-                  <Button
-                    variant="outline"
-                    className="border-zinc-700 text-zinc-300 hover:bg-zinc-900 hover:text-white"
-                    onClick={() => setIsModalOpen(false)}
-                  >
-                    <XMarkIcon className="w-4 h-4 mr-2" />
-                    Close
+                  <Button variant="outline" className="border-zinc-700 text-zinc-300 hover:bg-zinc-900 hover:text-white" onClick={() => setIsModalOpen(false)}>
+                    <XMarkIcon className="w-4 h-4 mr-2" /> Close
                   </Button>
                 </div>
               </div>

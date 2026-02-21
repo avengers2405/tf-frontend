@@ -1,15 +1,15 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useAppStore } from "@/lib/store"
 import { StatCard } from "@/components/ui/stat-card"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { SkillBadge } from "@/components/ui/skill-badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { UserGroupIcon, BriefcaseIcon, StarIcon, KeyIcon, DocumentTextIcon, XMarkIcon } from "@heroicons/react/24/outline"
+import { UserGroupIcon, BriefcaseIcon, KeyIcon, DocumentTextIcon } from "@heroicons/react/24/outline"
 import Link from "next/link"
+import MiniSearch from "minisearch"
 
 export default function RecruiterDashboard() {
   const { students, opportunities } = useAppStore()
@@ -17,12 +17,12 @@ export default function RecruiterDashboard() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [showInviteDialog, setShowInviteDialog] = useState(!isAuthenticated)
   
-  // New state for API data
+  // State for API data
   const [resumes, setResumes] = useState([])
   const [isLoading, setIsLoading] = useState(false)
   
-  // New state for filtering
-  const [selectedSkills, setSelectedSkills] = useState([])
+  // New state for search query
+  const [searchQuery, setSearchQuery] = useState("")
 
   const handleInviteSubmit = () => {
     if (inviteToken === "RECRUIT2025" || inviteToken.length > 5) {
@@ -39,7 +39,6 @@ export default function RecruiterDashboard() {
         .then((res) => res.json())
         .then((data) => {
           if (data.success) {
-            console.log("Fetched Resumes:", data.documents);
             // Sort by newest first
             const sortedDocs = data.documents.sort(
               (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -51,6 +50,55 @@ export default function RecruiterDashboard() {
         .finally(() => setIsLoading(false))
     }
   }, [isAuthenticated])
+
+  // --- MINISEARCH OPTIMIZATION LOGIC ---
+
+  // 1. Initialize and memoize MiniSearch index
+  const miniSearch = useMemo(() => {
+    const ms = new MiniSearch({
+      fields: ['skillsText', 'name', 'student_registration_number'], // Fields to search
+      storeFields: ['id'], // Fields to return in results
+      idField: 'id'
+    })
+
+    // Prepare data: Join skills array into a single searchable string
+    const preparedDocs = resumes.map(doc => ({
+      ...doc,
+      skillsText: doc.skills ? doc.skills.join(' ') : ''
+    }))
+
+    ms.addAll(preparedDocs)
+    return ms
+  }, [resumes])
+
+  // 2. Execute search when query changes (AND logic first, then OR logic)
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim()) return []
+
+    // Search with AND logic (must contain ALL terms)
+    const andResults = miniSearch.search(searchQuery, {
+      prefix: true, // Allows partial matching (e.g., "spr" matches "springboot")
+      combineWith: 'AND',
+      boost: { skillsText: 2 } // Prioritize matches found in skills
+    })
+
+    // Search with OR logic (must contain AT LEAST ONE term)
+    const orResults = miniSearch.search(searchQuery, {
+      prefix: true,
+      combineWith: 'OR',
+      boost: { skillsText: 2 }
+    })
+
+    // Combine them: AND results go first, OR results appended without duplicates
+    const andIds = new Set(andResults.map(r => r.id))
+    const combinedIds = [
+      ...andResults.map(r => r.id),
+      ...orResults.map(r => r.id).filter(id => !andIds.has(id))
+    ]
+
+    // Map the combined IDs back to the full resume objects
+    return combinedIds.map(id => resumes.find(r => r.id === id)).filter(Boolean)
+  }, [searchQuery, miniSearch, resumes])
 
   if (!isAuthenticated) {
     return (
@@ -84,44 +132,11 @@ export default function RecruiterDashboard() {
     )
   }
 
-  // Calculate some stats
   const topSkills = ["React", "Python", "Machine Learning", "Node.js", "Android"]
-  const avgCGPA = (students.reduce((sum, s) => sum + s.cgpa, 0) / students.length).toFixed(2)
-  
-  // Calculate unique students based on registration numbers
   const uniqueStudents = new Set(resumes.map(doc => doc.student_registration_number)).size
-
-  // --- FILTERING LOGIC ---
-  // Extract unique skills from all resumes to create filter options
-  const allUniqueSkills = Array.from(
-    new Set(resumes.flatMap((doc) => (doc.skills || []).map(s => s.trim())))
-  ).filter(Boolean).sort()
-
-  // Toggle selection of skills
-  const toggleSkill = (skill) => {
-    setSelectedSkills((prev) =>
-      prev.includes(skill)
-        ? prev.filter((s) => s !== skill)
-        : [...prev, skill]
-    )
-  }
-
-  // Clear all filters
-  const clearFilters = () => setSelectedSkills([])
-
-  // Filter resumes based on selected skills (AND logic: must have ALL selected skills)
-  const filteredResumes = selectedSkills.length > 0
-    ? resumes.filter((doc) =>
-        selectedSkills.every((selectedSkill) =>
-          doc.skills?.some(
-            (docSkill) => docSkill.toLowerCase().trim() === selectedSkill.toLowerCase().trim()
-          )
-        )
-      )
-    : resumes
-
-  // Determine what to display (show all matches if filtering, otherwise show latest 6)
-  const displayedResumes = selectedSkills.length > 0 ? filteredResumes : filteredResumes.slice(0, 6)
+  
+  // Determine what to display
+  const displayedResumes = searchQuery.trim() ? searchResults : resumes.slice(0, 6)
 
   return (
     <div className="space-y-6">
@@ -205,46 +220,30 @@ export default function RecruiterDashboard() {
       </Card>
 
       <Card className="glass rounded-2xl p-6">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
           <div>
-            <h2 className="text-xl font-semibold text-foreground">Recently Uploaded Resumes</h2>
-            <p className="text-sm text-muted-foreground">Latest candidate submissions from the database</p>
+            <h2 className="text-xl font-semibold text-foreground">Candidate Database</h2>
+            <p className="text-sm text-muted-foreground">
+              {searchQuery.trim() ? "Search Results" : "Latest candidate submissions"}
+            </p>
           </div>
         </div>
         
-        {/* SKILL FILTER SECTION */}
-        {!isLoading && allUniqueSkills.length > 0 && (
-          <div className="mb-6 rounded-lg border border-border bg-secondary/20 p-4">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-semibold text-foreground">Filter by Skills</span>
-              {selectedSkills.length > 0 && (
-                <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 px-2 text-xs">
-                  Clear Filters
-                </Button>
-              )}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {allUniqueSkills.map((skill) => (
-                <button
-                  key={skill}
-                  onClick={() => toggleSkill(skill)}
-                  className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium transition-colors border ${
-                    selectedSkills.includes(skill)
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "bg-background text-foreground border-border hover:border-primary/50"
-                  }`}
-                >
-                  {skill}
-                </button>
-              ))}
-            </div>
-            {selectedSkills.length > 0 && (
-              <p className="mt-3 text-xs text-muted-foreground">
-                Showing {filteredResumes.length} candidate{filteredResumes.length !== 1 ? 's' : ''} with <strong>all</strong> selected skills.
-              </p>
-            )}
-          </div>
-        )}
+        {/* NEW SEARCH BAR SECTION */}
+        <div className="mb-6">
+          <Input
+            type="text"
+            placeholder="Search by skills, name, or ID (e.g. Java Kotlin Springboot)"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full md:max-w-xl border-primary/20 focus-visible:ring-primary"
+          />
+          {searchQuery.trim() && (
+            <p className="mt-2 text-sm text-muted-foreground">
+              Showing {searchResults.length} candidates matching your search.
+            </p>
+          )}
+        </div>
 
         {isLoading ? (
           <div className="flex justify-center p-8">
@@ -252,7 +251,9 @@ export default function RecruiterDashboard() {
           </div>
         ) : displayedResumes.length === 0 ? (
           <div className="text-center py-8">
-            <p className="text-muted-foreground">No resumes found matching the selected skills.</p>
+            <p className="text-muted-foreground">
+              {searchQuery.trim() ? "No resumes found matching those terms." : "No resumes available."}
+            </p>
           </div>
         ) : (
           <div className="grid gap-4 md:grid-cols-2">
@@ -300,7 +301,8 @@ export default function RecruiterDashboard() {
           </div>
         )}
       </Card>
-
+      
+      {/* Read-Only Access Card remains the same... */}
       <Card className="glass rounded-2xl p-6 bg-primary/5 border-primary/20">
         <div className="flex items-start gap-4">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">

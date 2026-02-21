@@ -36,6 +36,7 @@ export default function RecruiterDashboard() {
         .then((res) => res.json())
         .then((data) => {
           if (data.success) {
+            console.log("Fetched Resumes:", data.documents);
             // Sort by newest first
             const sortedDocs = data.documents.sort(
               (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -154,10 +155,11 @@ export default function RecruiterDashboard() {
       <Card className="glass rounded-2xl p-6">
         <h2 className="mb-4 text-xl font-semibold text-foreground">Top Candidate Skills</h2>
         <div className="grid gap-4 md:grid-cols-5">
-          {topSkills.map((skill) => {
-            const count = students.filter((s) =>
-              s.skills.some((sk) => sk.toLowerCase().includes(skill.toLowerCase())),
-            ).length
+         {topSkills.map((skill) => {
+  // Now fetching from your real database documents!
+  const count = resumes.filter((doc) =>
+    doc.skills && doc.skills.some((sk) => sk.toLowerCase().includes(skill.toLowerCase())),
+  ).length
             return (
               <div key={skill} className="text-center rounded-lg border border-border p-4">
                 <div className="text-2xl font-bold text-primary">{count}</div>
@@ -188,12 +190,28 @@ export default function RecruiterDashboard() {
                     <p className="text-sm text-muted-foreground">
                       Uploaded: {new Date(doc.created_at).toLocaleDateString()}
                     </p>
-                    <p className="text-xs text-muted-foreground/60 mt-1 truncate max-w-[200px]">
-                      {doc.name}
-                    </p>
-                  </div>
-                </div>
-                {/* Note: In order for this link to work, you must set up the route.ts handler we discussed! */}
+                   <p className="text-xs text-muted-foreground/60 mt-1 truncate max-w-[200px]">
+      {doc.name}
+    </p>
+    
+    {/* ADDED: Display up to 4 skills directly on the card */}
+    {doc.skills && doc.skills.length > 0 && (
+      <div className="mt-3 flex flex-wrap gap-1">
+        {doc.skills.slice(0, 4).map((skill, idx) => (
+          <span key={idx} className="inline-flex items-center rounded-md bg-secondary/50 px-2 py-0.5 text-xs font-medium text-secondary-foreground border border-border">
+            Skills:{skill}
+          </span>
+        ))}
+        {doc.skills.length > 4 && (
+          <span className="text-xs text-muted-foreground self-center ml-1">
+            +{doc.skills.length - 4} more
+          </span>
+        )}
+      </div>
+    )}
+  </div>
+</div>
+                 {/* Note: In order for this link to work, you must set up the route.ts handler we discussed! */}
                 <Button size="sm" variant="outline" asChild className="w-full bg-transparent">
                   <a 
                     href={doc.document_url} 

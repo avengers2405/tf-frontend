@@ -354,11 +354,11 @@ export default function TeamBuilderPage() {
   // Decline Invitation Handler
   const handleDeclineInvitation = async (invitation: any) => {
     try {
-      const response = await fetch('http://localhost:5000/api/team-builder/decline-invitation', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ invitation_id: invitation.id })
-      });
+      const response = await fetch(`http://localhost:5000/api/team-builder/decline-invite`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ invitation_id: invitation.id })
+    });
       
       if (response.ok) {
         const data = await response.json();

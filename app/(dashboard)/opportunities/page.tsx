@@ -8,7 +8,17 @@
 // import { Badge } from "@/components/ui/badge"
 // import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 // import { Dialog, DialogContent } from "@/components/ui/dialog"
-// import { MagnifyingGlassIcon, FunnelIcon, ArrowsUpDownIcon, SparklesIcon, UserCircleIcon, CurrencyRupeeIcon, AcademicCapIcon, XMarkIcon } from "@heroicons/react/24/outline"
+// import { 
+//   MagnifyingGlassIcon, 
+//   FunnelIcon, 
+//   ArrowsUpDownIcon, 
+//   SparklesIcon, 
+//   UserCircleIcon, 
+//   CurrencyRupeeIcon, 
+//   AcademicCapIcon, 
+//   XMarkIcon,
+//   CheckCircleIcon
+// } from "@heroicons/react/24/outline"
 // import Link from "next/link"
 // import { getDaysUntil } from "@/lib/utils"
 // import { analyzeOpportunity, generateUserIdeal, UserPreferences } from "@/lib/vibe-logic"
@@ -22,7 +32,8 @@
 //   const [sortBy, setSortBy] = useState("recent")
 
 //   // --- USER PERMISSION CHECKS ---
-//   const isStudent = currentUser?.username === "student"
+//   const isStudent = currentUser?.username === "student" || currentUser?.username === "anshi_student" || currentUser?.role === "STUDENT"
+//   const isTeacher = currentUser?.username?.toLowerCase() === "teacher"
 //   const isRecruiter = currentUser?.username?.toLowerCase() === "recruiter"
 //   const canPostOpp = ["teacher", "tnp", "recruiter"].includes(currentUser?.username?.toLowerCase() || "")
 
@@ -47,8 +58,10 @@
 //       if (!currentUser?.id) return
 //       setLoading(true)
 //       try {
-//         // Prepare URLs
-//         const projectUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL}/post-opportunity/getProjectOpportunitiesById/${currentUser.id}`
+//         // Choose project URL based on user type
+//         const projectUrl = isTeacher 
+//           ? `${process.env.NEXT_PUBLIC_BACKEND_URL}/post-opportunity/getProjectOpportunitiesById/${currentUser.id}`
+//           : `${process.env.NEXT_PUBLIC_BACKEND_URL}/post-opportunity/getAllOpportunities`
         
 //         let internshipsUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/internships/`
 //         if (isRecruiter) {
@@ -57,7 +70,6 @@
 
 //         const placedUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/internships/check-placed/${currentUser.id}`
 
-//         // Execute all fetches concurrently (Cleaned up from the double-declaration in original)
 //         const [projectsResult, internshipsResult, placedResult] = await Promise.all([
 //           fetch(projectUrl).then(res => res.json()).catch(() => ({ success: false, data: [] })),
 //           fetch(internshipsUrl).then(res => res.json()).catch(() => []),
@@ -115,14 +127,18 @@
 //     }
 
 //     fetchOpportunities()
-//   }, [currentUser?.id, isRecruiter])
+//   }, [currentUser?.id, isRecruiter, isTeacher])
 
-//   // --- MEMOIZED FILTERING & SORTING ---
+//   // --- FILTERING & SORTING ---
 //   const filteredOpportunities = useMemo(() => {
-//     const combined = [...internshipOpportunities, ...projectOpportunities]
+//     // If placed, exclude internships from the source array
+//     const sourceData = isPlaced 
+//       ? projectOpportunities 
+//       : [...internshipOpportunities, ...projectOpportunities];
+
 //     const searchTerm = search.toLowerCase().trim()
 
-//     return combined
+//     return sourceData
 //       .filter((opp) => {
 //         if (!opp) return false
         
@@ -141,14 +157,12 @@
 //         }
 //         return new Date(b.postedDate || 0).getTime() - new Date(a.postedDate || 0).getTime()
 //       })
-//   }, [internshipOpportunities, projectOpportunities, search, typeFilter, sortBy])
+//   }, [internshipOpportunities, projectOpportunities, search, typeFilter, sortBy, isPlaced])
 
-//   // --- CHART DATA GENERATOR ---
 //   const getChartData = () => {
 //     if (!selectedOpp) return []
 //     const oppStats = analyzeOpportunity(selectedOpp, userPrefs)
 //     const userStats = generateUserIdeal(userPrefs)
-
 //     return [
 //       { subject: 'Salary', A: userStats.financials, B: oppStats.financials, fullMark: 100 },
 //       { subject: 'Mentorship', A: userStats.mentorship, B: oppStats.mentorship, fullMark: 100 },
@@ -168,32 +182,33 @@
 
 //   if (loading || userLoading) {
 //     return (
-//       <div className="flex h-64 items-center justify-center">
+//       <div className="flex h-[60vh] items-center justify-center">
 //         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-//       </div>
-//     )
-//   }
-
-//   if (isPlaced) {
-//     return (
-//       <div className="flex h-[70vh] items-center justify-center">
-//         <Card className="glass rounded-2xl p-12 text-center max-w-md w-full border-primary/20 bg-primary/5">
-//           <div className="flex flex-col items-center gap-4">
-//             <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-3xl">🎉</div>
-//             <h2 className="text-2xl font-bold text-foreground">Congratulations!</h2>
-//             <p className="text-muted-foreground">You have already been selected for an opportunity. Focus on your upcoming journey!</p>
-//           </div>
-//         </Card>
 //       </div>
 //     )
 //   }
 
 //   return (
 //     <div className="space-y-6">
+//       {/* PLACED BANNER */}
+//       {isPlaced && isStudent && (
+//         <Card className="border-emerald-500/20 bg-emerald-500/5 p-5 rounded-2xl flex items-center gap-4 shadow-sm">
+//           <div className="h-12 w-12 shrink-0 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-2xl">🎉</div>
+//           <div>
+//             <h3 className="font-bold text-emerald-700 dark:text-emerald-400">Status: Placed</h3>
+//             <p className="text-sm text-muted-foreground max-w-lg">
+//               Congratulations on your selection! You are currently restricted from applying to new internships, but you can still manage your Academic Projects below.
+//             </p>
+//           </div>
+//         </Card>
+//       )}
+
 //       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
 //         <div>
 //           <h1 className="text-3xl font-bold tracking-tight text-foreground">Opportunities</h1>
-//           <p className="text-muted-foreground">{filteredOpportunities.length} opportunities available</p>
+//           <p className="text-muted-foreground">
+//             {isPlaced ? "Viewing Academic Projects" : `${filteredOpportunities.length} opportunities available`}
+//           </p>
 //         </div>
 //         {canPostOpp && (
 //           <Button asChild className="w-full sm:w-auto">
@@ -211,10 +226,9 @@
 //               </div>
 //               <div>
 //                 <h3 className="font-bold text-sm">Vibe Preferences</h3>
-//                 <p className="text-xs text-muted-foreground">Calibrate the AI to find your perfect fit</p>
+//                 <p className="text-xs text-muted-foreground">AI matching based on your goals</p>
 //               </div>
 //             </div>
-
 //             <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap md:w-auto">
 //               <Select value={userPrefs.focusArea} onValueChange={(v: any) => setUserPrefs({ ...userPrefs, focusArea: v })}>
 //                 <SelectTrigger className="h-9 w-full text-xs bg-background border-0 shadow-sm sm:w-[140px]"><SelectValue /></SelectTrigger>
@@ -226,7 +240,6 @@
 //                   <SelectItem value="Cybersecurity">Cybersecurity</SelectItem>
 //                 </SelectContent>
 //               </Select>
-
 //               <Select value={userPrefs.priority} onValueChange={(v: any) => setUserPrefs({ ...userPrefs, priority: v })}>
 //                 <SelectTrigger className="h-9 w-full text-xs bg-background border-0 shadow-sm sm:w-[130px]"><SelectValue /></SelectTrigger>
 //                 <SelectContent>
@@ -240,7 +253,7 @@
 //         </Card>
 //       )}
 
-//       {/* Filters & Search UI */}
+//       {/* Filters & Search */}
 //       <Card className="glass rounded-2xl p-4 border-muted/20">
 //         <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
 //           <div className="relative md:col-span-6">
@@ -252,7 +265,6 @@
 //               className="pl-9 bg-background/50"
 //             />
 //           </div>
-
 //           <div className="flex flex-col gap-3 sm:flex-row md:col-span-6">
 //             <Select value={typeFilter} onValueChange={setTypeFilter}>
 //               <SelectTrigger className="w-full bg-background/50">
@@ -267,7 +279,6 @@
 //                 <SelectItem value="project">Projects</SelectItem>
 //               </SelectContent>
 //             </Select>
-
 //             <Select value={sortBy} onValueChange={setSortBy}>
 //               <SelectTrigger className="w-full bg-background/50">
 //                 <div className="flex items-center gap-2">
@@ -284,18 +295,17 @@
 //         </div>
 //       </Card>
 
-//       {/* Opportunities Grid */}
+//       {/* Grid */}
 //       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
 //         {filteredOpportunities.map((opp) => {
 //           const daysLeft = getDaysUntil(opp.deadline)
-
 //           return (
 //             <Card key={opp.id} className="glass group flex min-w-0 flex-col rounded-2xl p-4 transition-all hover:shadow-xl hover:border-primary/40 sm:p-5">
 //               <div className="mb-4">
 //                 <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
 //                   <div className="min-w-0 flex-1 sm:mr-2">
 //                     <h3 className="font-bold text-foreground group-hover:text-primary transition-colors truncate">{opp.title}</h3>
-//                     <p className="text-sm text-muted-foreground font-medium">{opp.company}</p>
+//                     <p className="text-sm text-muted-foreground font-medium truncate">{opp.company}</p>
 //                   </div>
 //                   <span className={`w-fit shrink-0 self-start rounded-full px-2.5 py-0.5 text-[10px] uppercase tracking-wider font-bold sm:self-auto ${
 //                     opp.type?.toLowerCase() === "internship" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" :
@@ -423,7 +433,9 @@
 //                   )}
 //                 </div>
 //                 <div className="flex gap-3">
-//                   <Button className="flex-1 bg-white text-black hover:bg-zinc-200 font-bold">Apply Now</Button>
+//                   <Button asChild className="flex-1 bg-white text-black hover:bg-zinc-200 font-bold">
+//                     <Link href={`/opportunities/${selectedOpp?.id}`}>Apply Now</Link>
+//                   </Button>
 //                   <Button variant="outline" className="border-zinc-700 text-zinc-300 hover:bg-zinc-900 hover:text-white" onClick={() => setIsModalOpen(false)}>
 //                     <XMarkIcon className="w-4 h-4 mr-2" /> Close
 //                   </Button>
@@ -496,10 +508,7 @@ export default function OpportunitiesPage() {
       if (!currentUser?.id) return
       setLoading(true)
       try {
-        // Choose project URL based on user type
-        const projectUrl = isTeacher 
-          ? `${process.env.NEXT_PUBLIC_BACKEND_URL}/post-opportunity/getProjectOpportunitiesById/${currentUser.id}`
-          : `${process.env.NEXT_PUBLIC_BACKEND_URL}/post-opportunity/getAllOpportunities`
+        const projectUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL}/post-opportunity/getAllOpportunities`
         
         let internshipsUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/internships/`
         if (isRecruiter) {
@@ -508,8 +517,11 @@ export default function OpportunitiesPage() {
 
         const placedUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/internships/check-placed/${currentUser.id}`
 
+        // If user is a recruiter or teacher, we don't fetch projects at all
         const [projectsResult, internshipsResult, placedResult] = await Promise.all([
-          fetch(projectUrl).then(res => res.json()).catch(() => ({ success: false, data: [] })),
+          (isRecruiter || isTeacher) 
+            ? Promise.resolve({ success: false, data: [] }) 
+            : fetch(projectUrl).then(res => res.json()).catch(() => ({ success: false, data: [] })),
           fetch(internshipsUrl).then(res => res.json()).catch(() => []),
           fetch(placedUrl).then(res => res.json()).catch(() => ({ isPlaced: false }))
         ])
@@ -714,7 +726,10 @@ export default function OpportunitiesPage() {
               <SelectContent>
                 <SelectItem value="all">All Types</SelectItem>
                 <SelectItem value="internship">Internships</SelectItem>
-                <SelectItem value="project">Projects</SelectItem>
+                {/* Hide Projects from the filter dropdown for teachers and recruiters */}
+                {!isTeacher && !isRecruiter && (
+                  <SelectItem value="project">Projects</SelectItem>
+                )}
               </SelectContent>
             </Select>
             <Select value={sortBy} onValueChange={setSortBy}>

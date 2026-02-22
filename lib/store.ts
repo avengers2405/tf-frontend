@@ -87,6 +87,13 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: "campus-portal-storage",
+      version: 2,
+      migrate: (persistedState: any) => {
+        return {
+          ...persistedState,
+          notifications: [],
+        }
+      },
     },
   ),
 )

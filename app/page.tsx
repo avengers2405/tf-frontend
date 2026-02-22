@@ -3,7 +3,7 @@
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useAppStore } from "@/lib/store"
-import { mockStudents, mockOpportunities, mockApplications, mockNotifications } from "@/lib/mock-data"
+import { mockStudents, mockOpportunities, mockApplications } from "@/lib/mock-data"
 
 export default function HomePage() {
   const router = useRouter()
@@ -26,12 +26,6 @@ export default function HomePage() {
     if (store.applications.length === 0) {
       mockApplications.forEach((app) => {
         useAppStore.getState().addApplication(app)
-      })
-    }
-
-    if (store.notifications.length === 0) {
-      mockNotifications.forEach((notif) => {
-        useAppStore.getState().addNotification(notif)
       })
     }
 

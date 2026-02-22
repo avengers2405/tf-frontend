@@ -588,31 +588,7 @@ export const mockNotifications: Notification[] = [
     type: "success",
     read: false,
     timestamp: "2025-01-28T10:30:00",
-  },
-  {
-    id: "N002",
-    title: "New Opportunity",
-    message: "New ML Research Intern position posted by DataMind AI",
-    type: "info",
-    read: false,
-    timestamp: "2025-01-27T15:45:00",
-  },
-  {
-    id: "N003",
-    title: "Deadline Reminder",
-    message: "Application deadline for Android Developer Position is in 3 days",
-    type: "warning",
-    read: true,
-    timestamp: "2025-01-26T09:00:00",
-  },
-  {
-    id: "N004",
-    title: "Resume Update",
-    message: "Please update your resume with recent projects",
-    type: "info",
-    read: true,
-    timestamp: "2025-01-25T14:20:00",
-  },
+  }
 ]
 
 // Utility function to calculate match score between skills

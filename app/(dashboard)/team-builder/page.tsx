@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { DomainChart } from "@/components/ui/domain-chart"
 import { SkillBadge } from "@/components/ui/skill-badge"
 import { 
@@ -56,9 +57,11 @@ export default function TeamBuilderPage() {
   const [myTeams, setMyTeams] = useState<any[]>([]) 
   const [isCreating, setIsCreating] = useState(false)
   const [draftTeamName, setDraftTeamName] = useState("")
+  const [draftDescription, setDraftDescription] = useState("")
   const [draftMembers, setDraftMembers] = useState<any[]>([])
   const [students, setStudents] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [groupCounts, setGroupCounts] = useState<Record<string, number>>({})
 
   // State for the Search and Team Details Popup
   const [searchQuery, setSearchQuery] = useState("")
@@ -169,14 +172,32 @@ export default function TeamBuilderPage() {
   // --- Handlers ---
   const startCreation = () => {
     if (!currentUser) return
+    if (myTeams.length >= 2) { toast.error("You are already part of two teams."); return; }
     const formattedUser = { ...currentUser, name: currentUser.name || currentUser.full_name || currentUser.username }
     setIsCreating(true)
     setDraftMembers([formattedUser]) 
     setDraftTeamName("")
+    setDraftDescription("")
     setSearchQuery("") 
   }
 
-  const toggleMemberSelection = (student: any) => {
+  const ensureGroupCount = async (student: any) => {
+    const reg = student.registration_number
+    if (groupCounts[reg] !== undefined) return groupCounts[reg]
+    try {
+      const response = await fetch(`http://localhost:5000/api/team-builder/get-student-groups/${reg}`)
+      if (response.ok) {
+        const data = await response.json()
+        setGroupCounts(prev => ({ ...prev, [reg]: data.count }))
+        return data.count
+      }
+    } catch (_) {
+      /* ignore transient errors */
+    }
+    return 0
+  }
+
+  const toggleMemberSelection = async (student: any) => {
     const isSelected = draftMembers.find(m => m.id === student.id)
     if (isSelected) {
       if (student.id === currentUser?.id) {
@@ -186,6 +207,11 @@ export default function TeamBuilderPage() {
     } else {
       if (draftMembers.length >= 6) {
         toast.error("Maximum team size is 6 members."); return;
+      }
+      const count = await ensureGroupCount(student)
+      if (count >= 2) {
+        toast.error("Cannot add. Student is already part of two teams.")
+        return
       }
       setDraftMembers(prev => [...prev, student])
     }
@@ -233,6 +259,7 @@ export default function TeamBuilderPage() {
   if (!draftTeamName.trim()) { toast.error("Please give your team a name."); return; }
   if (draftMembers.length < 2) { toast.error("A team needs at least 2 members."); return; }
   if (!currentUser) { toast.error("User not authenticated."); return; }
+  if (myTeams.length >= 2) { toast.error("You are already part of two teams."); return; }
 
   try {
     // Step 1: Create the Team
@@ -263,7 +290,8 @@ export default function TeamBuilderPage() {
           body: JSON.stringify({
             group_id: newGroupId,
             receiver_registration_number: member.registration_number,
-            sender_user_id: currentUser.id
+            sender_user_id: currentUser.id,
+            description: draftDescription.trim() || null,
           })
         })
       );
@@ -278,6 +306,7 @@ export default function TeamBuilderPage() {
       setIsCreating(false);
       setDraftMembers([]);
       setDraftTeamName("");
+      setDraftDescription("");
       setSearchQuery(""); 
     } else {
       toast.error(data.error || "Failed to create team");
@@ -308,6 +337,7 @@ export default function TeamBuilderPage() {
       if (response.ok) {
         const data = await response.json();
         setCandidateGroupData(data); 
+        setGroupCounts(prev => ({ ...prev, [student.registration_number]: data.count }))
       } else {
         toast.error("Failed to fetch candidate's groups.");
       }
@@ -398,7 +428,7 @@ export default function TeamBuilderPage() {
         </div>
         <div className="flex gap-2">
           {!isCreating && (
-            <Button onClick={startCreation} className="bg-primary text-primary-foreground">
+                <Button onClick={startCreation} disabled={myTeams.length >= 2} className="bg-primary text-primary-foreground disabled:opacity-60 disabled:cursor-not-allowed">
               <PlusIcon className="mr-2 h-5 w-5" />
               Create New Team
             </Button>
@@ -420,6 +450,7 @@ export default function TeamBuilderPage() {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {pendingInvitations.map((invitation) => {
               const groupName = invitation.group?.group_name || `Group #${invitation.group_id}`;
+              const atLimit = myTeams.length >= 2;
               return (
                 <Card key={invitation.id} className="p-4 flex flex-col justify-between shadow-sm bg-background border border-border">
                   <div className="mb-4">
@@ -429,16 +460,27 @@ export default function TeamBuilderPage() {
                         {formatDate(invitation.created_at)}
                       </span>
                     </div>
+                    {invitation.description && (
+                      <p className="text-sm text-muted-foreground bg-primary/5 border border-primary/20 rounded-md p-2 leading-relaxed">
+                        {invitation.description}
+                      </p>
+                    )}
                     <p className="text-sm text-muted-foreground">
                       Invited by: <span className="font-medium text-foreground">
                         {invitation.sender?.first_name || invitation.sender?.registration_number}
                       </span>
                     </p>
+                    {atLimit && (
+                      <p className="mt-2 text-xs font-medium text-red-600 bg-red-50 border border-red-100 rounded px-2 py-1">
+                        You cannot accept more invites. You are already in 2 teams.
+                      </p>
+                    )}
                   </div>
                   <div className="flex gap-2 mt-auto">
                     <Button 
                       size="sm" 
                       className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                      disabled={atLimit}
                       onClick={() => handleAcceptInvitation(invitation.id, groupName)}
                     >
                       <CheckIcon className="w-4 h-4 mr-1" /> Accept
@@ -486,6 +528,11 @@ export default function TeamBuilderPage() {
                         {invitation.status}
                       </span>
                     </div>
+                    {invitation.description && (
+                      <p className="text-sm text-muted-foreground bg-secondary/20 border border-secondary/40 rounded-md p-2 leading-relaxed">
+                        {invitation.description}
+                      </p>
+                    )}
                     <p className="text-sm text-muted-foreground">
                       Sent to: <span className="font-medium text-foreground">{receiverName}</span>
                     </p>
@@ -513,6 +560,20 @@ export default function TeamBuilderPage() {
                   onChange={(e) => setDraftTeamName(e.target.value)}
                   className="bg-background/80"
                 />
+              </div>
+
+              <div className="w-full md:w-2/3">
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-sm font-medium">Invite Message</label>
+                  <span className="text-xs text-muted-foreground">Optional • Shown to invitees</span>
+                </div>
+                <Textarea
+                  placeholder="Tell your teammates why this team is awesome, what the project is about, expectations, timelines..."
+                  value={draftDescription}
+                  onChange={(e) => setDraftDescription(e.target.value.slice(0, 280))}
+                  className="bg-background/80 min-h-24"
+                />
+                <div className="text-right text-[11px] text-muted-foreground mt-1">{draftDescription.length}/280</div>
               </div>
               
               <div className="flex-1 flex flex-col items-center">
@@ -638,6 +699,9 @@ export default function TeamBuilderPage() {
               if (!student) return null
 
               const isSelected = draftMembers.some(m => m.id === student.id)
+              const cachedCount = groupCounts[student.registration_number]
+              const atCapacity = cachedCount !== undefined && cachedCount >= 2
+              const creatorAtLimit = myTeams.length >= 2
 
               return (
                 <Card 
@@ -651,6 +715,9 @@ export default function TeamBuilderPage() {
                       <h3 className="font-semibold text-foreground flex items-center gap-2">
                         {student.name}
                         {isSelected && <CheckCircleIcon className="w-5 h-5 text-primary" />}
+                        {atCapacity && (
+                          <span className="text-[11px] font-semibold text-red-600 bg-red-50 border border-red-100 px-2 py-0.5 rounded-full">In 2 teams</span>
+                        )}
                       </h3>
                       <p className="text-sm text-muted-foreground">
                         {student.department || 'No Department'} • Year {student.year}
@@ -695,6 +762,7 @@ export default function TeamBuilderPage() {
                         size="sm" 
                         className="flex-1" 
                         variant={isSelected ? "secondary" : "default"}
+                        disabled={atCapacity && !isSelected}
                         onClick={() => toggleMemberSelection(student)}
                       >
                         {isSelected ? (
@@ -708,12 +776,18 @@ export default function TeamBuilderPage() {
                         )}
                       </Button>
                     ) : (
-                      <Button size="sm" className="flex-1" onClick={startCreation}>
+                      <Button 
+                        size="sm" 
+                        className="flex-1" 
+                        disabled={atCapacity || creatorAtLimit}
+                        onClick={startCreation}
+                      >
                         <UserGroupIcon className="mr-2 h-4 w-4" />
-                        Start Team with {student.name?.split(' ')[0]}
+                        {atCapacity || creatorAtLimit
+                          ? "Cannot create team (in 2 teams)"
+                          : `Start Team with ${student.name?.split(' ')[0]}`}
                       </Button>
                     )}
-                    
                     <Button 
                       size="sm" 
                       variant="outline"

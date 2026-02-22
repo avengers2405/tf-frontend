@@ -64,7 +64,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
     recruiter: [
       { name: "Dashboard", href: "/dashboard/recruiter", icon: HomeIcon },
       { name: "Opportunities", href: "/opportunities", icon: BriefcaseIcon },
-      { name: "Students", href: "/resumes", icon: UsersIcon },
+      // { name: "Students", href: "/resumes", icon: UsersIcon },
       { name: "Analytics", href: "/analytics", icon: ChartBarIcon },
     ],
   }

@@ -769,8 +769,9 @@ export default function OpportunityDetailPage({
 
   // Roles Check
   const isStaff = ["tnp", "recruiter", "teacher"].includes(user?.username?.toLowerCase() || "")
-  const isStudent = user?.username === "student"
-
+  console.log("User IDDDDD",user?.username);
+  const isStudent = user?.username === "student" || user?.username === "anshi_student"
+  console.log("Is Student",isStudent);
   useEffect(() => {
     const fetchOpportunityById = async () => {
       setLoading(true)

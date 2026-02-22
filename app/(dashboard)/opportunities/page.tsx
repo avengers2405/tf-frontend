@@ -470,7 +470,8 @@ export default function OpportunitiesPage() {
   const [sortBy, setSortBy] = useState("recent")
 
   // --- USER PERMISSION CHECKS ---
-  const isStudent = currentUser?.username === "student" || currentUser?.role === "STUDENT"
+  const isStudent = currentUser?.username === "student" || currentUser?.username === "anshi_student" || currentUser?.role === "STUDENT"
+  const isTeacher = currentUser?.username?.toLowerCase() === "teacher"
   const isRecruiter = currentUser?.username?.toLowerCase() === "recruiter"
   const canPostOpp = ["teacher", "tnp", "recruiter"].includes(currentUser?.username?.toLowerCase() || "")
 
@@ -495,7 +496,10 @@ export default function OpportunitiesPage() {
       if (!currentUser?.id) return
       setLoading(true)
       try {
-        const projectUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL}/post-opportunity/getProjectOpportunitiesById/${currentUser.id}`
+        // Choose project URL based on user type
+        const projectUrl = isTeacher 
+          ? `${process.env.NEXT_PUBLIC_BACKEND_URL}/post-opportunity/getProjectOpportunitiesById/${currentUser.id}`
+          : `${process.env.NEXT_PUBLIC_BACKEND_URL}/post-opportunity/getAllOpportunities`
         
         let internshipsUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/internships/`
         if (isRecruiter) {
@@ -561,7 +565,7 @@ export default function OpportunitiesPage() {
     }
 
     fetchOpportunities()
-  }, [currentUser?.id, isRecruiter])
+  }, [currentUser?.id, isRecruiter, isTeacher])
 
   // --- FILTERING & SORTING ---
   const filteredOpportunities = useMemo(() => {

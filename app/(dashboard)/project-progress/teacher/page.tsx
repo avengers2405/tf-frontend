@@ -239,7 +239,7 @@ interface Project {
 export default function TeacherDashboard() {
   const [isLogbookOpen, setIsLogbookOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  
+
   // Filter States
   const [projectFilter, setProjectFilter] = useState('');
   const [teamFilter, setTeamFilter] = useState('');
@@ -258,10 +258,10 @@ export default function TeacherDashboard() {
       expectedEnd: '2025-05-30',
       status: 'ongoing',
       members: [
-        { name: 'Alex Kumar', role: 'Team Lead' },
-        { name: 'Sarah Johnson', role: 'Backend Developer' },
-        { name: 'Mike Chen', role: 'Frontend Developer' },
-        { name: 'Priya Sharma', role: 'ML Engineer' }
+        { name: "Trisha Khimesra", role: "Team Lead" },
+        { name: "Aastha Shah", role: "Backend Developer" },
+        { name: "Neeraj Magdum", role: "Frontend Developer" },
+        { name: "Akshit Mishra", role: "ML Engineer" },
       ],
       phases: [
         {
@@ -307,8 +307,8 @@ export default function TeacherDashboard() {
       expectedEnd: '2025-04-30',
       status: 'ongoing',
       members: [
-        { name: 'John Doe', role: 'Team Lead' },
-        { name: 'Jane Smith', role: 'Developer' },
+        { name: 'Trisha Khimesra', role: 'Team Lead' },
+        { name: 'Aastha Shah', role: 'Developer' },
       ],
       phases: [
         {
@@ -368,7 +368,7 @@ export default function TeacherDashboard() {
   const filteredProjects = projects.filter((project) => {
     const projectMatch = projectFilter === '' || project.title === projectFilter;
     const teamMatch = teamFilter === '' || project.groupName === teamFilter;
-    
+
     const leadMatch = leadFilter === '' || project.members.some(
       (m) => m.role === 'Team Lead' && m.name === leadFilter
     );
@@ -390,7 +390,7 @@ export default function TeacherDashboard() {
         <div className="max-w-5xl mx-auto space-y-6">
           {/* Navigation Header */}
           <div className="flex items-center justify-between">
-            <button 
+            <button
               onClick={() => setSelectedProject(null)}
               className="flex items-center text-gray-600 hover:text-blue-600 transition-colors font-medium"
             >
@@ -401,9 +401,9 @@ export default function TeacherDashboard() {
 
           {/* Project Details */}
           <div className="w-full">
-            <ProjectDashboardView 
-              projectData={selectedProject} 
-              userRole="TEACHER" 
+            <ProjectDashboardView
+              projectData={selectedProject}
+              userRole="TEACHER"
             />
           </div>
 
@@ -435,8 +435,8 @@ export default function TeacherDashboard() {
                 <span className="text-sm text-gray-400 pb-1">Completion Status</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-3">
-                <div 
-                  className="bg-blue-600 h-3 rounded-full transition-all duration-700 ease-out" 
+                <div
+                  className="bg-blue-600 h-3 rounded-full transition-all duration-700 ease-out"
                   style={{ width: `${progress}%` }}
                 />
               </div>
@@ -452,16 +452,16 @@ export default function TeacherDashboard() {
                 <p className="text-sm text-gray-500">Milestones and phase progress</p>
               </div>
             </div>
-            <ProjectTimeline 
-              phases={selectedProject.phases} 
-              userRole="TEACHER" 
+            <ProjectTimeline
+              phases={selectedProject.phases}
+              userRole="TEACHER"
               onStatusChange={handleStatusChange}
             />
           </div>
         </div>
 
         {/* Modal-based Logbook */}
-        <ChatLogbook 
+        <ChatLogbook
           isOpen={isLogbookOpen}
           onClose={() => setIsLogbookOpen(false)}
           projectData={selectedProject}
@@ -542,7 +542,7 @@ export default function TeacherDashboard() {
                 </div>
               </div>
             </div>
-            
+
             <div className="bg-white p-6 rounded-lg border border-gray-200">
               <div className="flex items-center justify-between">
                 <div>
@@ -576,8 +576,8 @@ export default function TeacherDashboard() {
                 <div>
                   <p className="text-sm text-gray-600">Avg Progress</p>
                   <p className="text-3xl font-bold text-gray-900 mt-1">
-                    {projects.length > 0 
-                      ? Math.round(projects.reduce((acc, p) => acc + calculateProgress(p.phases), 0) / projects.length) 
+                    {projects.length > 0
+                      ? Math.round(projects.reduce((acc, p) => acc + calculateProgress(p.phases), 0) / projects.length)
                       : 0}%
                   </p>
                 </div>
@@ -592,7 +592,7 @@ export default function TeacherDashboard() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredProjects.map((project) => {
               const projectProgress = calculateProgress(project.phases);
-              
+
               return (
                 <button
                   key={project.id}

@@ -481,6 +481,9 @@ export default function OpportunitiesPage() {
   const [typeFilter, setTypeFilter] = useState<string>("all")
   const [sortBy, setSortBy] = useState("recent")
 
+  // Normalize backend base URL to avoid "undefined" host in requests
+  const backendBase = (process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000").replace(/\/+$/, "")
+
   // --- USER PERMISSION CHECKS ---
   const isStudent = currentUser?.username === "student" || currentUser?.username === "anshi_student" || currentUser?.role === "STUDENT"
   const isTeacher = currentUser?.username?.toLowerCase() === "teacher"
@@ -505,17 +508,23 @@ export default function OpportunitiesPage() {
 
   useEffect(() => {
     const fetchOpportunities = async () => {
-      if (!currentUser?.id) return
+      if (!currentUser?.id) {
+        if (!userLoading) setLoading(false)
+        return
+      }
       setLoading(true)
       try {
-        const projectUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL}/post-opportunity/getAllOpportunities`
+        // Choose project URL based on user type
+        const projectUrl = isTeacher 
+          ? `${backendBase}/post-opportunity/getProjectOpportunitiesById/${currentUser.id}`
+          : `${backendBase}/post-opportunity/getAllOpportunities`
         
-        let internshipsUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/internships/`
+        let internshipsUrl = `${backendBase}/api/internships/`
         if (isRecruiter) {
           internshipsUrl += `?user_id=${currentUser.id}`
         }
 
-        const placedUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/internships/check-placed/${currentUser.id}`
+        const placedUrl = `${backendBase}/api/internships/check-placed/${currentUser.id}`
 
         // If user is a recruiter or teacher, we don't fetch projects at all
         const [projectsResult, internshipsResult, placedResult] = await Promise.all([
@@ -577,7 +586,7 @@ export default function OpportunitiesPage() {
     }
 
     fetchOpportunities()
-  }, [currentUser?.id, isRecruiter, isTeacher])
+  }, [currentUser?.id, isRecruiter, isTeacher, backendBase, userLoading])
 
   // --- FILTERING & SORTING ---
   const filteredOpportunities = useMemo(() => {

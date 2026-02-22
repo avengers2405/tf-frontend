@@ -323,6 +323,140 @@
 //     </div>
 //   )
 // }
+// "use client"
+
+// import { useEffect, useState } from "react"
+// import { useAppStore } from "@/lib/store"
+// import { Card } from "@/components/ui/card"
+// import { Badge } from "@/components/ui/badge"
+// import { Button } from "@/components/ui/button"
+// import Link from "next/link"
+// import { formatDate } from "@/lib/utils"
+// import { ClockIcon, CheckCircleIcon } from "@heroicons/react/24/outline"
+// import { useUser } from "@/contexts/UserContext"
+
+// // 1. Define the Application interface to solve the 'never' type errors
+// interface Application {
+//   id: string;
+//   status: string;
+//   createdAt: string;
+//   internshipId: string;
+//   internship?: {
+//     title: string;
+//     company: string;
+//   };
+// }
+
+// export default function ApplicationsPage() {
+//   const { currentUser } = useAppStore()
+//   const { user } = useUser()
+  
+//   // 2. Explicitly type the state as an array of Application objects
+//   const [myApplications, setMyApplications] = useState<Application[]>([])
+//   const [loading, setLoading] = useState(true)
+
+//   useEffect(() => {
+//     const fetchApps = async () => {
+//       // Use user?.id from context or currentUser?.id from store
+//       const userId = user?.id || currentUser?.id;
+//       console.log("User Id",userId);
+//       if (!userId) return;
+      
+//       try {
+//         const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/internships/applications/${userId}`)
+//         console.log("Response",response);
+//         if (!response.ok) throw new Error("Failed to fetch")
+//         const data = await response.json()
+//         setMyApplications(data)
+//       } catch (err) {
+//         console.error("Failed to load applications", err)
+//       } finally {
+//         setLoading(false)
+//       }
+//     }
+
+//     fetchApps()
+//   }, [user, currentUser])
+
+//   if (loading) return <div className="p-10 text-center">Loading your applications...</div>
+//   if (!currentUser && !user) return <div className="p-10 text-center">Please log in to view applications.</div>
+
+//   const getStageColor = (status: string) => {
+//     switch (status?.toLowerCase()) {
+//       case "selected": return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+//       case "rejected": return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+//       default: return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+//     }
+//   }
+
+//   return (
+//     <div className="space-y-6">
+//       <div>
+//         <h1 className="text-3xl font-bold text-foreground">My Internship Applications</h1>
+//         <p className="mt-1 text-muted-foreground">
+//           {myApplications.length} internship application{myApplications.length !== 1 ? "s" : ""} submitted
+//         </p>
+//       </div>
+
+//       {myApplications.length > 0 ? (
+//         <div className="space-y-4">
+//           {myApplications.map((app) => (
+//             <Card key={app.id} className="glass rounded-2xl p-6">
+//               <div className="flex items-start gap-4">
+//                 {/* Fixed tailwind: flex-shrink-0 -> shrink-0 */}
+//                 <div className="shrink-0 mt-1">
+//                   {app.status === "SELECTED" ? (
+//                     <CheckCircleIcon className="h-5 w-5 text-green-600" />
+//                   ) : (
+//                     <ClockIcon className="h-5 w-5 text-blue-600" />
+//                   )}
+//                 </div>
+
+//                 <div className="flex-1 min-w-0">
+//                   <div className="flex items-start justify-between gap-4 mb-2">
+//                     <div>
+//                       <h3 className="text-lg font-semibold text-foreground">
+//                         {app.internship?.title || "Position Title"}
+//                       </h3>
+//                       <p className="text-sm text-muted-foreground">
+//                         {app.internship?.company || "Company Name"}
+//                       </p>
+//                     </div>
+//                     <Badge className={getStageColor(app.status)}>{app.status}</Badge>
+//                   </div>
+
+//                   <div className="grid gap-3 md:grid-cols-2 mb-4 text-sm">
+//                     <div>
+//                       <span className="text-muted-foreground">Applied On:</span>
+//                       <span className="ml-2 font-medium text-foreground">
+//                         {formatDate(app.createdAt)}
+//                       </span>
+//                     </div>
+//                   </div>
+
+//                   <Button size="sm" variant="outline" asChild>
+//                     <Link href={`/opportunities/${app.internshipId}`}>
+//                       View Internship Details
+//                     </Link>
+//                   </Button>
+//                 </div>
+//               </div>
+//             </Card>
+//           ))}
+//         </div>
+//       ) : (
+//         <Card className="glass rounded-2xl p-12 text-center">
+//           <ClockIcon className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+//           <h2 className="text-xl font-semibold text-foreground mb-2">No Applications Found</h2>
+//           <p className="text-muted-foreground mb-6">You haven't applied to any internships yet.</p>
+//           <Button asChild>
+//             <Link href="/opportunities">Browse Internships</Link>
+//           </Button>
+//         </Card>
+//       )}
+//     </div>
+//   )
+// }
 "use client"
 
 import { useEffect, useState } from "react"
@@ -335,7 +469,6 @@ import { formatDate } from "@/lib/utils"
 import { ClockIcon, CheckCircleIcon } from "@heroicons/react/24/outline"
 import { useUser } from "@/contexts/UserContext"
 
-// 1. Define the Application interface to solve the 'never' type errors
 interface Application {
   id: string;
   status: string;
@@ -348,42 +481,77 @@ interface Application {
 }
 
 export default function ApplicationsPage() {
-  const { currentUser } = useAppStore()
+  // Use user from context as the primary source of truth
   const { user } = useUser()
+  const { currentUser } = useAppStore()
   
-  // 2. Explicitly type the state as an array of Application objects
   const [myApplications, setMyApplications] = useState<Application[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchApps = async () => {
-      // Use user?.id from context or currentUser?.id from store
+      // Prioritize the context user, fallback to store
       const userId = user?.id || currentUser?.id;
-      console.log("User Id",userId);
-      if (!userId) return;
       
+      // GUARD: Prevent fetching if ID is missing or is the placeholder 'S001'
+      if (!userId || userId === "S001") {
+        console.log("Waiting for valid User ID... current:", userId);
+        return;
+      }
+      
+      console.log("Fetching applications for verified User ID:", userId);
+      setLoading(true);
+      setError(null);
+
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/internships/applications/${userId}`)
-        if (!response.ok) throw new Error("Failed to fetch")
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/internships/applications/${userId}`
+        )
+
+        if (!response.ok) {
+          // Try to get specific error message from your Express controller
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || `Server responded with ${response.status}`);
+        }
+
         const data = await response.json()
         setMyApplications(data)
-      } catch (err) {
-        console.error("Failed to load applications", err)
+      } catch (err: any) {
+        console.error("Fetch Error:", err.message)
+        setError(err.message)
       } finally {
         setLoading(false)
       }
     }
 
     fetchApps()
-  }, [user, currentUser])
+  }, [user, currentUser]) // Re-run when either source updates
 
-  if (loading) return <div className="p-10 text-center">Loading your applications...</div>
-  if (!currentUser && !user) return <div className="p-10 text-center">Please log in to view applications.</div>
+  // Loading State
+  if (loading && myApplications.length === 0) {
+    return <div className="p-10 text-center animate-pulse text-muted-foreground">Loading your applications...</div>
+  }
+
+  // Error State
+  if (error) {
+    return (
+      <div className="p-10 text-center">
+        <p className="text-red-500 mb-4">Error: {error}</p>
+        <Button onClick={() => window.location.reload()}>Retry</Button>
+      </div>
+    )
+  }
+
+  // Auth Guard
+  if (!currentUser && !user) {
+    return <div className="p-10 text-center">Please log in to view applications.</div>
+  }
 
   const getStageColor = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case "selected": return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-      case "rejected": return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+    switch (status?.toUpperCase()) {
+      case "SELECTED": return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+      case "REJECTED": return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
       default: return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
     }
   }
@@ -402,7 +570,6 @@ export default function ApplicationsPage() {
           {myApplications.map((app) => (
             <Card key={app.id} className="glass rounded-2xl p-6">
               <div className="flex items-start gap-4">
-                {/* Fixed tailwind: flex-shrink-0 -> shrink-0 */}
                 <div className="shrink-0 mt-1">
                   {app.status === "SELECTED" ? (
                     <CheckCircleIcon className="h-5 w-5 text-green-600" />

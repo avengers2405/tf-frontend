@@ -56,13 +56,14 @@ export default function StudentDashboard() {
 
   // --- 1. GET SKILLS FROM BACKEND ON LOAD ---
   useEffect(() => {
+    
     const fetchSkills = async () => {
       if (!currentUser?.id) return;
 
       try {
         // Adjust this URL to match the exact path of your new GET route
         const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/students/get-skills`, {
-          method: "GET",
+          method: "POST",
           headers: {
             "Content-Type": "application/json"
           },
@@ -101,6 +102,17 @@ export default function StudentDashboard() {
   }
 
   const [dynamicDomains, setDynamicDomains] = useState<DomainData>(normalizedDomains)
+  useEffect(() => {
+    if (currentUser) {
+      setDynamicDomains({
+        web: currentUser?.domains?.web ?? 0,
+        ml: currentUser?.domains?.ml ?? 0,
+        cp: (currentUser?.domains as any)?.core ?? currentUser?.domains?.cp ?? 0,
+        appDev: (currentUser?.domains as any)?.systems ?? currentUser?.domains?.appDev ?? 0,
+        cyber: (currentUser?.domains as any)?.tools ?? currentUser?.domains?.cyber ?? 0,
+      })
+    }
+  }, [currentUser])
 
   const [extractedSkills, setExtractedSkills] = useState<any[]>([]);
 
@@ -137,6 +149,8 @@ export default function StudentDashboard() {
     }
 
     if (currentUser) {
+
+      
       setPdfUrls({})
       fetchResumesList()
     }

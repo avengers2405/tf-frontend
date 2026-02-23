@@ -755,6 +755,7 @@ export default function OpportunityDetailPage({
 }) {
   const resolvedParams = use(params)
   const router = useRouter()
+  const backendBase = (process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000").replace(/\/+$/, "")
 
   // 1. App Store: Contains the student's mock skills for the match score
   const { opportunities, currentUser, addNotification } = useAppStore()
@@ -777,7 +778,8 @@ export default function OpportunityDetailPage({
       setLoading(true)
       setError(null)
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/internships/${resolvedParams.id}`)
+        const internshipUrl = `${backendBase}/api/internships/${resolvedParams.id}`
+        const res = await fetch(internshipUrl)
 
         if (res.ok) {
           const data = await res.json()
@@ -810,13 +812,38 @@ export default function OpportunityDetailPage({
           return
         }
 
-        // FALLBACK: If API throws 404, check local store for Projects
-        const storeOpp = opportunities.find((o) => o.id === resolvedParams.id)
-        if (storeOpp) {
-          setOpportunity(storeOpp)
-        } else {
-          setError("Opportunity not found")
+        // FALLBACK 1: Try projects endpoint (academic projects have numeric ids)
+        const projectsRes = await fetch(`${backendBase}/post-opportunity/getAllOpportunities`)
+        if (projectsRes.ok) {
+          const projectsData = await projectsRes.json()
+          const project = projectsData?.data?.find((p: any) => p.project_id?.toString() === resolvedParams.id)
+          if (project) {
+            const mappedProject = {
+              id: project.project_id.toString(),
+              title: project.title,
+              company: "Academic Project",
+              type: "project",
+              description: project.description,
+              skills: project.technology_stack ? project.technology_stack.split(',').map((s: string) => s.trim()) : [],
+              postedDate: project.created_at || new Date().toISOString(),
+              deadline: project.deadline || new Date(new Date().setMonth(new Date().getMonth() + 3)).toISOString(),
+              stipend: "Academic Credit",
+              duration: project.academic_year || "N/A",
+              applicants: project._count?.groups || 0,
+              postedBy: project.supervisor ? `${project.supervisor.first_name} ${project.supervisor.last_name}` : "Unknown",
+              tags: [],
+              eligibility: {},
+              applications: [],
+            }
+            setOpportunity(mappedProject)
+            return
+          }
         }
+
+        // FALLBACK 2: Check local store
+        const storeOpp = opportunities.find((o) => o.id === resolvedParams.id)
+        if (storeOpp) setOpportunity(storeOpp)
+        else setError("Opportunity not found")
 
       } catch (err: any) {
         const storeOpp = opportunities.find((o) => o.id === resolvedParams.id)
@@ -833,7 +860,7 @@ export default function OpportunityDetailPage({
     if (!userLoading) {
       fetchOpportunityById()
     }
-  }, [resolvedParams.id, opportunities, userLoading])
+  }, [resolvedParams.id, opportunities, userLoading, backendBase])
 
 
   if (loading || userLoading) {

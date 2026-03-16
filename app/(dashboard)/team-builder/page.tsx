@@ -659,6 +659,39 @@ export default function TeamBuilderPage() {
                     </div>
                   ))}
                 </div>
+
+              {team.isCreator && (
+                <div className="mt-4 pt-4 border-t flex gap-2">
+                  <Button 
+                    size="sm" 
+                    className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      // Your finalize logic here
+                      toast.info(`Finalizing ${team.name}...`);
+                    }}
+                  >
+                    <CheckCircleIcon className="w-4 h-4 mr-1" />
+                    Finalize
+                  </Button>
+                  
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    className="flex-1"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      // Logic to open "Add Member" state
+                      setIsCreating(true);
+                      setDraftTeamName(team.name);
+                      setDraftMembers(team.members);
+                    }}
+                  >
+                    <PlusIcon className="w-4 h-4 mr-1" />
+                    Add
+                  </Button>
+                </div>
+              )}
               </Card>
             ))}
           </div>
